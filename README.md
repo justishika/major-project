@@ -22,7 +22,7 @@ The pipeline automatically fetches the Parkinson's Disease dataset from the UCI 
 
 1. **Clone or Download the Project.** Make sure you are in the project's root folder:
    ```powershell
-   cd "C:\Users\ishik\Downloads\major project"
+   cd new-folder-name
    ```
 
 2. **Activate the Virtual Environment**
