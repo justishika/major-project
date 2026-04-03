@@ -57,10 +57,10 @@ def load_and_preprocess_data(dataset_name='parkinsons', n_components=4, use_pca=
     else:
         X_proc = X_scaled
         
-    # Scale all features uniformly into [-np.pi, np.pi]
-    max_val = np.max(np.abs(X_proc))
-    if max_val > 0:
-        X_proc = (X_proc / max_val) * np.pi
+    # Ensure all features map well inside Pauli rotation ranges
+    from sklearn.preprocessing import MinMaxScaler
+    scaler_pi = MinMaxScaler(feature_range=(-np.pi, np.pi))
+    X_proc = scaler_pi.fit_transform(X_proc)
 
     return X_proc, y, pca_info
 

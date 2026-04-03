@@ -226,4 +226,31 @@ def plot_confusion_matrices(curve_records, output_dir="."):
         plt.savefig(os.path.join(output_dir, f"confusion_matrix_{rec['Dataset']}_{safe_name}.png"))
         plt.close()
 
+def plot_single_metric_vs_size(df, metric, output_dir="."):
+    if metric not in df.columns:
+        return
+    _prepare_output(output_dir)
+    valid = df.dropna(subset=[metric])
+    if valid.empty:
+        return
+    
+    agg = valid.groupby(['Dataset', 'Model', 'Dataset Size'], as_index=False)[metric].mean()
+    for dataset_name in agg['Dataset'].unique():
+        subset = agg[agg['Dataset'] == dataset_name]
+        plt.figure(figsize=(10, 6))
+        sns.lineplot(data=subset, x='Dataset Size', y=metric, hue='Model', marker='o')
+        plt.title(f'{metric} vs Dataset Size ({dataset_name})')
+        plt.xlabel('Dataset Size')
+        plt.ylabel(metric)
+        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        safe_name = metric.replace(' ', '_').replace('-', '_').replace('(', '').replace(')', '').lower()
+        plt.savefig(os.path.join(output_dir, f"{safe_name}_vs_size_{dataset_name}.png"))
+        plt.close()
+
+def plot_all_individual_metrics(df, output_dir="."):
+    metrics = ['Precision', 'Recall', 'F1-score', 'Sensitivity', 'Specificity', 'ROC-AUC', 'Train Accuracy', 'Generalization Gap', 'Runtime (s)']
+    for m in metrics:
+        plot_single_metric_vs_size(df, m, output_dir)
+
     print("All evaluation plots saved.")
