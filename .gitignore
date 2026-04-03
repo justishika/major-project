@@ -68,15 +68,4 @@ venv.bak/
 *.swp
 *.swo
 
-# Project Output Files
-benchmark_results.csv
-benchmark_results_summary.csv
-accuracy_vs_size.png
-accuracy_vs_size_parkinsons.png
-f1_score_vs_size.png
-model_stability_parkinsons.png
-noise_sensitivity_parkinsons.png
-precision_recall_curve_parkinsons.png
-roc_curve_parkinsons.png
-overfitting_behavior_parkinsons.png
-confusion_matrix_parkinsons_*.png
+

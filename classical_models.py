@@ -12,6 +12,7 @@ def evaluate_model(y_true, y_pred, y_prob=None):
     """
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0
+    false_negative_rate = fn / (fn + tp) if (fn + tp) > 0 else 0.0
 
     metrics = {
         'Accuracy': accuracy_score(y_true, y_pred),
@@ -20,6 +21,11 @@ def evaluate_model(y_true, y_pred, y_prob=None):
         'F1-score': f1_score(y_true, y_pred, zero_division=0),
         'Sensitivity': recall_score(y_true, y_pred, zero_division=0),
         'Specificity': specificity,
+        'False Positive': int(fp),
+        'False Negative': int(fn),
+        'True Positive': int(tp),
+        'True Negative': int(tn),
+        'False Negative Rate': false_negative_rate,
     }
     if y_prob is not None:
         try:
