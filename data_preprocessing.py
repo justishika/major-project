@@ -56,6 +56,11 @@ def load_and_preprocess_data(dataset_name='parkinsons', n_components=4, use_pca=
         pca_info['total_explained_variance'] = float(np.sum(pca.explained_variance_ratio_))
     else:
         X_proc = X_scaled
+        
+    # Scale all features uniformly into [-np.pi, np.pi]
+    max_val = np.max(np.abs(X_proc))
+    if max_val > 0:
+        X_proc = (X_proc / max_val) * np.pi
 
     return X_proc, y, pca_info
 

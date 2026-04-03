@@ -1,10 +1,10 @@
 from qiskit_machine_learning.algorithms import VQC
-from qiskit.circuit.library import ZZFeatureMap, RealAmplitudes
+from qiskit.circuit.library import ZFeatureMap, RealAmplitudes
 from qiskit.algorithms.optimizers import COBYLA
 from qiskit.utils import QuantumInstance
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, depolarizing_error
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA, KernelPCA
 
 
 def create_noise_model(error_prob=0.01):
@@ -27,9 +27,9 @@ def get_vqc(num_qubits=4, noisy=False, error_prob=0.01):
     Built for Qiskit 0.43.2 (QuantumInstance API).
     """
     try:
-        feature_map = ZZFeatureMap(feature_dimension=num_qubits, reps=1, entanglement='linear')
-        ansatz = RealAmplitudes(num_qubits=num_qubits, reps=1)
-        optimizer = COBYLA(maxiter=40)
+        feature_map = ZFeatureMap(feature_dimension=num_qubits, reps=2)
+        ansatz = RealAmplitudes(num_qubits=num_qubits, reps=2, entanglement='linear')
+        optimizer = COBYLA(maxiter=1000)
 
         if noisy:
             noise_model = create_noise_model(error_prob)
@@ -68,7 +68,7 @@ class HybridClassicalQuantumClassifier:
         self.classical_pca_components = classical_pca_components or num_qubits
         self.noisy = noisy
         self.error_prob = error_prob
-        self.pca = PCA(n_components=self.classical_pca_components)
+        self.pca = KernelPCA(n_components=self.classical_pca_components, kernel='rbf')
         self.vqc = get_vqc(num_qubits=self.num_qubits, noisy=noisy, error_prob=error_prob)
         if self.vqc is None:
             raise ValueError("Could not initialize VQC")

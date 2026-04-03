@@ -36,9 +36,9 @@ def run_classical_models(X_train, y_train, X_test, y_test):
     Returns a dictionary with metrics and predictions for each model.
     """
     models = {
-        'SVM': SVC(kernel='rbf', probability=True, random_state=42),
-        'Logistic Regression': LogisticRegression(max_iter=1000, random_state=42),
-        'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42)
+        'SVM': SVC(kernel='linear', C=0.1, probability=True, random_state=42),
+        'Logistic Regression': LogisticRegression(max_iter=50, C=0.1, random_state=42),
+        'Random Forest': RandomForestClassifier(n_estimators=5, max_depth=1, random_state=42)
     }
     
     results = {}
