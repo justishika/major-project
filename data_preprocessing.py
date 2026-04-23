@@ -1,14 +1,49 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
-from sklearn.datasets import load_breast_cancer
+from sklearn.impute import SimpleImputer
+from sklearn.datasets import load_breast_cancer, fetch_openml
 
-URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/parkinsons/parkinsons.data'
+# ── Remote dataset URLs ────────────────────────────────────────────────────────
+PARKINSONS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/parkinsons/parkinsons.data'
+
+# ── Per-dataset configuration exported for main.py ────────────────────────────
+DATASET_CONFIG = {
+    'parkinsons': {
+        'display_name': "Parkinson's Disease",
+        'sizes': [20, 50, 100, 150, 195],
+    },
+    'breast_cancer': {
+        'display_name': 'Breast Cancer',
+        'sizes': [50, 100, 200, 350, 500],
+    },
+    'hepatitis_c': {
+        'display_name': 'Hepatitis C (HCV Serology)',
+        # Classic UCI hepatitis — 155 patients, serology markers → DIE/LIVE prognosis
+        'sizes': [15, 30, 60, 90, 120],
+    },
+    'heart_disease': {
+        'display_name': 'Heart Disease (Cleveland)',
+        'sizes': [20, 50, 100, 150, 220],
+    },
+    'mammographic_mass': {
+        'display_name': 'Mammographic Mass Assessment',
+        # BI-RADS radiological features → benign/malignant mass classification
+        'sizes': [50, 100, 200, 350, 700],
+    },
+    'thyroid_disease': {
+        'display_name': 'Thyroid Disease (Sick Euthyroid)',
+        # Lab markers (T3, T4, TSH, etc.) → sick euthyroid vs normal
+        'sizes': [50, 100, 250, 500, 800],
+    },
+}
+
+# ── Individual loaders ─────────────────────────────────────────────────────────
 
 def _load_parkinsons_data():
-    df = pd.read_csv(URL)
+    df = pd.read_csv(PARKINSONS_URL)
     X = df.drop(columns=['name', 'status']).values
     y = df['status'].values
     return X, y
@@ -16,69 +51,144 @@ def _load_parkinsons_data():
 
 def _load_breast_cancer_data():
     data = load_breast_cancer()
-    X = data.data
-    y = data.target
+    return data.data, data.target
+
+
+def _load_hepatitis_c_data():
+    """
+    Classic UCI Hepatitis dataset: 155 patients, 19 serology/lab features.
+    Binary target: DIE (0) vs LIVE (1).
+    Categorical features are label-encoded; missing values imputed by median.
+    Clinical context: predicts survival of hepatitis (HCV/HBV) patients.
+    """
+    data = fetch_openml('hepatitis', version=1, as_frame=True, parser='auto')
+    df = data.data.copy()
+    # Label-encode any categorical columns
+    for col in df.select_dtypes(include=['object', 'category']).columns:
+        df[col] = pd.Categorical(df[col]).codes.astype(float)
+        df[col] = df[col].replace(-1, np.nan)
+    X = df.values.astype(float)
+    imputer = SimpleImputer(strategy='median')
+    X = imputer.fit_transform(X)
+    raw = data.target.astype(str).str.strip().str.upper()
+    # DIE → 0, LIVE → 1
+    y = (raw == 'LIVE').astype(int).values
     return X, y
 
 
-def _dataset_loader(dataset_name):
-    dataset_name = dataset_name.lower()
-    if dataset_name == 'parkinsons':
-        return _load_parkinsons_data()
-    if dataset_name == 'breast_cancer':
-        return _load_breast_cancer_data()
-    raise ValueError(f"Unsupported dataset_name: {dataset_name}")
+def _load_heart_disease_data():
+    """Cleveland Heart Disease via OpenML heart-statlog — binary presence/absence."""
+    data = fetch_openml('heart-statlog', version=1, as_frame=True, parser='auto')
+    X = data.data.values.astype(float)
+    raw = data.target.astype(str).str.strip().str.lower()
+    if raw.isin(['present', 'absent']).any():
+        y = (raw == 'present').astype(int).values
+    else:
+        y = pd.to_numeric(raw, errors='coerce').fillna(0).astype(int).values
+        y = (y > 0).astype(int)
+    return X, y
+
+
+def _load_mammographic_mass_data():
+    """
+    UCI Mammographic Mass dataset: 961 instances, 5 BIRADS radiological features.
+    Binary target: benign (0) vs malignant (1).
+    Features: BI-RADS assessment, Age, Mass Shape, Mass Margin, Mass Density.
+    Clinical context: aids radiologists in classifying mammographic findings.
+    Missing values (originally '?') imputed by median after fetch.
+    """
+    data = fetch_openml('mammographic-mass', version=1, as_frame=True, parser='auto')
+    df = data.data.copy()
+    # Encode any categorical columns and mark unknowns as NaN
+    for col in df.select_dtypes(include=['object', 'category']).columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce')
+    X = df.values.astype(float)
+    imputer = SimpleImputer(strategy='median')
+    X = imputer.fit_transform(X)
+    raw = data.target.astype(str).str.strip()
+    # Target is '0' (benign) or '1' (malignant)
+    y = pd.to_numeric(raw, errors='coerce').fillna(0).astype(int).values
+    return X, y
+
+
+def _load_thyroid_disease_data():
+    """
+    OpenML 'sick' dataset: 3772 thyroid lab-test records.
+    Binary target: sick euthyroid (1) vs negative/normal (0).
+    Features: 29 — TSH, T3, TT4, T4U, FTI levels + patient demographics.
+    Clinical context: identifies sick euthyroid syndrome from blood panel.
+    Categorical features (sex, referral source, etc.) are label-encoded.
+    """
+    data = fetch_openml('sick', version=2, as_frame=True, parser='auto')
+    df = data.data.copy()
+    for col in df.select_dtypes(include=['object', 'category']).columns:
+        df[col] = pd.Categorical(df[col]).codes.astype(float)
+        df[col] = df[col].replace(-1, np.nan)
+    X = df.values.astype(float)
+    imputer = SimpleImputer(strategy='median')
+    X = imputer.fit_transform(X)
+    raw = data.target.astype(str).str.strip().str.lower()
+    # 'sick' → 1, 'negative' → 0
+    y = (raw == 'sick').astype(int).values
+    return X, y
+
+
+# ── Dispatcher ─────────────────────────────────────────────────────────────────
+
+_LOADERS = {
+    'parkinsons':        _load_parkinsons_data,
+    'breast_cancer':     _load_breast_cancer_data,
+    'hepatitis_c':       _load_hepatitis_c_data,
+    'heart_disease':     _load_heart_disease_data,
+    'mammographic_mass': _load_mammographic_mass_data,
+    'thyroid_disease':   _load_thyroid_disease_data,
+}
 
 
 def load_and_preprocess_data(dataset_name='parkinsons', n_components=4, use_pca=True):
     """
-    Downloads the dataset, separates features and labels, 
-    normalizes features, and applies PCA.
+    Load, standardise, PCA-reduce, and [-π, π]-scale a disease dataset.
+    Returns: X_proc (ndarray), y (ndarray), pca_info (dict)
     """
+    key = dataset_name.lower()
+    if key not in _LOADERS:
+        raise ValueError(f"Unknown dataset '{dataset_name}'. Available: {list(_LOADERS)}")
+
     print(f"Loading dataset: {dataset_name}")
-    X, y = _dataset_loader(dataset_name)
-    
-    # Normalize features
+    X, y = _LOADERS[key]()
+
+    # 1. Standardise
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
-    pca_info = {
-        'used': use_pca,
-        'n_components': n_components,
-        'explained_variance_ratio': None,
-        'total_explained_variance': None,
-    }
+    pca_info = {'used': use_pca, 'n_components': n_components,
+                'explained_variance_ratio': None, 'total_explained_variance': None}
 
+    # 2. PCA — guard against requesting more components than features/samples
     if use_pca:
-        pca = PCA(n_components=n_components)
+        n_comp = min(n_components, X_scaled.shape[1], X_scaled.shape[0] - 1)
+        pca = PCA(n_components=n_comp)
         X_proc = pca.fit_transform(X_scaled)
+        pca_info['n_components'] = n_comp
         pca_info['explained_variance_ratio'] = pca.explained_variance_ratio_.tolist()
         pca_info['total_explained_variance'] = float(np.sum(pca.explained_variance_ratio_))
     else:
         X_proc = X_scaled
-        
-    # Ensure all features map well inside Pauli rotation ranges
-    from sklearn.preprocessing import MinMaxScaler
+
+    # 3. Map to [-π, π] for Pauli rotations
     scaler_pi = MinMaxScaler(feature_range=(-np.pi, np.pi))
     X_proc = scaler_pi.fit_transform(X_proc)
 
     return X_proc, y, pca_info
 
+
 def get_stratified_subsample(X, y, sample_size, random_state=42):
-    """
-    Returns a stratified subsample of the dataset of a specific size.
-    """
     if sample_size >= len(y):
         return X, y
-        
     sss = StratifiedShuffleSplit(n_splits=1, train_size=sample_size, random_state=random_state)
-    for train_index, _ in sss.split(X, y):
-        X_sub = X[train_index]
-        y_sub = y[train_index]
-    return X_sub, y_sub
+    for train_idx, _ in sss.split(X, y):
+        return X[train_idx], y[train_idx]
+
 
 def prepare_train_test_split(X, y, test_size=0.3, random_state=42):
-    """
-    Splits data into train and test sets.
-    """
     return train_test_split(X, y, test_size=test_size, random_state=random_state, stratify=y)
