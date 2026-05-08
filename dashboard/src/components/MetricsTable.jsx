@@ -20,7 +20,7 @@ const MetricsTable = ({ data, title }) => {
         </thead>
         <tbody>
           {data.map((row, idx) => (
-            <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+            <tr key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
               {headers.map(h => {
                 let val = row[h];
                 // Format numbers if they are floats

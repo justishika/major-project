@@ -7,18 +7,18 @@ import numpy as np
 import os
 from sklearn.metrics import precision_recall_curve, roc_curve, auc, confusion_matrix
 
-plt.style.use("dark_background")
-plt.rcParams.update({
-    "axes.facecolor": "#0a0a0e",
-    "figure.facecolor": "#0a0a0e",
-    "axes.edgecolor": "#1e1e2d",
-    "axes.grid": True,
-    "grid.color": "#1e1e2d",
-    "text.color": "#f8f8f8",
-    "axes.labelcolor": "#a0a0b0",
-    "xtick.color": "#a0a0b0",
-    "ytick.color": "#a0a0b0",
-    "lines.linewidth": 2.5,
+plt.style.use("default")
+sns.set_theme(style="whitegrid", rc={
+    "axes.facecolor": "#ffffff",
+    "figure.facecolor": "#ffffff",
+    "axes.edgecolor": "#e5e7eb",
+    "grid.color": "#f3f4f6",
+    "text.color": "#1f2937",
+    "axes.labelcolor": "#374151",
+    "xtick.color": "#4b5563",
+    "ytick.color": "#4b5563",
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Inter", "Arial", "sans-serif"]
 })
 # ─────────────────────────────────────────────────────────────────────────────
 # VISUALIZATION MODULE
@@ -27,9 +27,9 @@ plt.rcParams.update({
 # plt.close() is called after every save — no interactive display needed.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Colour constants — Hybrid always gets standout neon cyan so it pops in every chart
-_HYBRID_COLOUR = '#08F7FE' # Neon Cyan
-_PALETTE       = 'cool'
+# Colour constants — Hybrid always gets standout refined color
+_HYBRID_COLOUR = '#d97706' # Sophisticated Amber
+_PALETTE       = 'muted'
 
 # Models shown in the primary comparison charts
 _CANONICAL = [

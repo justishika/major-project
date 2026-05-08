@@ -8,7 +8,7 @@ const GraphCard = ({ title, description, imageUrl, altText }) => {
         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{description}</p>
       </div>
       <div style={{
-        background: 'rgba(0,0,0,0.3)',
+        background: '#f9fafb',
         borderRadius: '8px',
         padding: '1rem',
         display: 'flex',

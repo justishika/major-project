@@ -16,7 +16,7 @@ const CrossDiseaseSummary = () => {
 
   return (
     <div className="flex-col gap-8">
-      <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', background: 'linear-gradient(to bottom right, var(--bg-card), rgba(99, 102, 241, 0.05))' }}>
+      <div className="glass-panel" style={{ padding: '3rem 2rem', textAlign: 'center', background: 'linear-gradient(to bottom right, var(--bg-card), rgba(217, 119, 6, 0.05))' }}>
         <h1 style={{ marginBottom: '1rem' }}>Hybrid Classical-Quantum ML Benchmark</h1>
         <p style={{ maxWidth: '800px', margin: '0 auto', fontSize: '1.1rem' }}>
           Comparing Quantum Kernel SVM and Classical baselines across 12 clinically diverse disease datasets.

@@ -104,7 +104,7 @@ const RunnerDashboard = () => {
         </div>
         
         <div style={{ flex: 1 }}>
-          <div className="glass" style={{ padding: '1.5rem', background: 'rgba(0,0,0,0.5)', height: '100%' }}>
+          <div className="glass" style={{ padding: '1.5rem', background: 'var(--bg-dark)', height: '100%' }}>
             <h4 style={{ marginBottom: '0.5rem', color: 'var(--accent-secondary)' }}>Execution Flow</h4>
             <ul style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', paddingLeft: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <li>1. Load and preprocess clinical dataset</li>
@@ -119,14 +119,14 @@ const RunnerDashboard = () => {
       </div>
 
       {/* Terminal View */}
-      <div className="glass-panel" style={{ background: '#050508', border: '1px solid #1e1e2d' }}>
+      <div className="glass-panel" style={{ background: '#1c1917', border: '1px solid var(--border-color)' }}>
         <div style={{ 
           padding: '0.75rem 1.5rem', 
-          borderBottom: '1px solid #1e1e2d',
+          borderBottom: '1px solid #4b5563',
           display: 'flex',
           alignItems: 'center',
           gap: '0.5rem',
-          color: 'var(--text-secondary)'
+          color: '#a8a29e'
         }}>
           <SquareTerminal size={16} />
           <span style={{ fontSize: '0.85rem', fontFamily: 'monospace' }}>Terminal Output</span>
@@ -137,17 +137,17 @@ const RunnerDashboard = () => {
           overflowY: 'auto',
           fontFamily: 'Consolas, Monaco, "Courier New", monospace',
           fontSize: '0.85rem',
-          color: '#a0a0b0',
+          color: '#e5e7eb',
           lineHeight: 1.5
         }}>
           {logs.length === 0 ? (
-            <div style={{ color: '#404050' }}>Waiting for execution to start...</div>
+            <div style={{ color: '#6b7280' }}>Waiting for execution to start...</div>
           ) : (
             logs.map((log, idx) => (
               <div key={idx} style={{ 
                 color: log.includes('ERROR') ? '#ff4a4a' : 
                        log.includes('SUCCESS') ? '#4ade80' : 
-                       log.includes('>>>') ? '#08F7FE' : 'inherit'
+                       log.includes('>>>') ? '#fbbf24' : 'inherit'
               }}>
                 {log}
               </div>
