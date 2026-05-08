@@ -68,5 +68,9 @@ venv.bak/
 *.swp
 *.swo
 
-
-
+# Node.js and Frontend
+node_modules/
+dist/
+dist-ssr/
+.eslintcache
+dashboard/public/results
