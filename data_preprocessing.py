@@ -360,10 +360,7 @@ def _load_heart_failure_data():
     Binary target: DEATH_EVENT (0 = survived, 1 = deceased).
     Clinical context: predicts mortality during follow-up period.
     """
-    import urllib.request
-    import io
-    req = urllib.request.urlopen(HEART_FAILURE_URL)
-    df = pd.read_csv(io.BytesIO(req.read()))
+    df = pd.read_csv(HEART_FAILURE_URL)
     X = df.drop(columns=['DEATH_EVENT']).values.astype(float)
     y = df['DEATH_EVENT'].values.astype(int)
     return X, y
