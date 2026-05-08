@@ -125,9 +125,9 @@ def _run_dataset(dataset_name, pca_components, num_runs, noise_levels, test_size
                 m_q_tr = evaluate_model(y_tr, qk.predict(X_tr))
                 m_q['Train Accuracy']     = m_q_tr['Accuracy']
                 m_q['Generalization Gap'] = m_q_tr['Accuracy'] - m_q['Accuracy']
-                print(f"  ✓ QK-SVM Noiseless: {m_q['Accuracy']:.3f}")
+                print(f"  OK QK-SVM Noiseless: {m_q['Accuracy']:.3f}")
             except Exception as e:
-                print(f"  ✗ QK-SVM Noiseless failed: {e}")
+                print(f"  FAIL QK-SVM Noiseless failed: {e}")
                 m_q, rt_q, yp_q, ys_q = dict(null_met), None, None, None
 
             rec_q = {
@@ -160,7 +160,7 @@ def _run_dataset(dataset_name, pca_components, num_runs, noise_levels, test_size
                     m_n['Train Accuracy']     = m_n_tr['Accuracy']
                     m_n['Generalization Gap'] = m_n_tr['Accuracy'] - m_n['Accuracy']
                 except Exception as e:
-                    print(f"  ✗ QK-SVM Noisy ({nl}) failed: {e}")
+                    print(f"  FAIL QK-SVM Noisy ({nl}) failed: {e}")
                     m_n, rt_n, yp_n, ys_n = dict(null_met), None, None, None
 
                 mn_label = 'QK-SVM (Noisy)' if nl > 0 else 'QK-SVM (Noiseless Noise-Curve)'
@@ -192,9 +192,9 @@ def _run_dataset(dataset_name, pca_components, num_runs, noise_levels, test_size
                 m_h_tr = evaluate_model(y_tr, hybrid.predict(X_tr))
                 m_h['Train Accuracy']     = m_h_tr['Accuracy']
                 m_h['Generalization Gap'] = m_h_tr['Accuracy'] - m_h['Accuracy']
-                print(f"  ✓ Hybrid: {m_h['Accuracy']:.3f}")
+                print(f"  OK Hybrid: {m_h['Accuracy']:.3f}")
             except Exception as e:
-                print(f"  ✗ Hybrid failed: {e}")
+                print(f"  FAIL Hybrid failed: {e}")
                 m_h, rt_h, yp_h, ys_h = dict(null_met), None, None, None
 
             rec_h = {
@@ -241,7 +241,7 @@ def _visualize_dataset(dataset_name, ds_results, ds_curves):
         .agg(**{'Mean Accuracy': ('Accuracy', 'mean'), 'Std Accuracy': ('Accuracy', 'std')})
     )
     summary.to_csv(os.path.join(OUTPUT_DATA, f'summary_{dataset_name}.csv'), index=False)
-    print(f"  ✓ {dataset_name} graphs complete.")
+    print(f"  OK {dataset_name} graphs complete.")
 
 
 def run_experiment():
@@ -347,7 +347,7 @@ if __name__ == "__main__":
         else:
             combined = new_df
         combined.to_csv(out_csv, index=False)
-        print(f"\n  ✓ Results appended to {out_csv}")
+        print(f"\n  OK Results appended to {out_csv}")
     else:
         # ── Full pipeline mode ────────────────────────────────────────────────
         run_experiment()

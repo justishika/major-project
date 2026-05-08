@@ -27,8 +27,10 @@ app.post('/api/run', (req, res) => {
 
   console.log(`Starting benchmark for ${disease}...`);
 
-  // Spawn the python process
-  const pythonExecutable = process.platform === 'win32' ? 'python' : 'python3';
+  // Spawn the python process using the virtual environment
+  const pythonExecutable = process.platform === 'win32' 
+    ? path.resolve(__dirname, '..', 'venv', 'Scripts', 'python.exe')
+    : path.resolve(__dirname, '..', 'venv', 'bin', 'python');
   const args = ['main.py', '-d', disease];
   const cwd = path.resolve(__dirname, '..'); // Run from major project root
 
