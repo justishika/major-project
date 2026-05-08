@@ -17,14 +17,12 @@ from sklearn.datasets import load_breast_cancer, fetch_openml
 
 # ── Remote dataset URLs ────────────────────────────────────────────────────────
 PARKINSONS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/parkinsons/parkinsons.data'
-<<<<<<< HEAD
 ACUTE_NEPHRITIS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/acute/diagnosis.data'
 HEART_FAILURE_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/00519/heart_failure_clinical_records_dataset.csv'
-=======
+
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 WILSONS_CLEAN_CSV = os.path.join(PROJECT_DIR, 'wilsons_clean.csv')
 PCA_READY_DATASETS = {'wilsons_disease'}
->>>>>>> 345c05f (feat: add Wilson's Disease and ALS synthetic datasets with loaders and config)
 
 # ── Per-dataset configuration exported for main.py ────────────────────────────
 DATASET_CONFIG = {
@@ -55,7 +53,6 @@ DATASET_CONFIG = {
         # Lab markers (T3, T4, TSH, etc.) → sick euthyroid vs normal
         'sizes': [50, 100, 250, 500, 800],
     },
-<<<<<<< HEAD
     'acute_nephritis': {
         'display_name': 'Acute Nephritis',
         'sizes': [20, 50, 75, 100, 120],
@@ -63,7 +60,7 @@ DATASET_CONFIG = {
     'heart_failure': {
         'display_name': 'Heart Failure Clinical Records',
         'sizes': [50, 100, 150, 200, 299],
-=======
+
     'wilsons_disease': {
         'display_name': "Wilson's Disease (Synthetic)",
         'sizes': [50, 100, 150, 200, 250],
@@ -71,8 +68,8 @@ DATASET_CONFIG = {
     'als': {
         'display_name': 'Amyotrophic Lateral Sclerosis (Synthetic)',
         'sizes': [50, 100, 150, 200, 250],
->>>>>>> 345c05f (feat: add Wilson's Disease and ALS synthetic datasets with loaders and config)
     },
+}
 }
 
 # ── Individual loaders ─────────────────────────────────────────────────────────
@@ -168,7 +165,6 @@ def _load_thyroid_disease_data():
     return X, y
 
 
-<<<<<<< HEAD
 def _load_acute_nephritis_data():
     """
     UCI Acute Inflammations dataset (predicts Acute Nephritis).
@@ -207,7 +203,6 @@ def _load_heart_failure_data():
     y = df['DEATH_EVENT'].values.astype(int)
     return X, y
 
-=======
 def _load_wilsons_disease_data():
     """
     Synthetic Wilson's Disease dataset (500 samples, 250 per class).
@@ -300,7 +295,6 @@ def _load_als_data():
     y = np.concatenate([y_ctrl, y_als])
     idx = rng.permutation(len(y))
     return X[idx], y[idx]
->>>>>>> 345c05f (feat: add Wilson's Disease and ALS synthetic datasets with loaders and config)
 
 # ── Dispatcher ─────────────────────────────────────────────────────────────────
 
@@ -311,13 +305,10 @@ _LOADERS = {
     'heart_disease':     _load_heart_disease_data,
     'mammographic_mass': _load_mammographic_mass_data,
     'thyroid_disease':   _load_thyroid_disease_data,
-<<<<<<< HEAD
     'acute_nephritis':   _load_acute_nephritis_data,
     'heart_failure':     _load_heart_failure_data,
-=======
     'wilsons_disease':   _load_wilsons_disease_data,
     'als':               _load_als_data,
->>>>>>> 345c05f (feat: add Wilson's Disease and ALS synthetic datasets with loaders and config)
 }
 
 
