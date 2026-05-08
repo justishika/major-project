@@ -17,7 +17,7 @@ DATASET_CONFIG = {
     },
     'breast_cancer': {
         'display_name': 'Breast Cancer',
-        'sizes': [50, 100, 200, 350, 500],
+        'sizes': [50, 100, 200, 300, 400],   # capped 500→400 to reduce QK-SVM O(n²) cost
     },
     'hepatitis_c': {
         'display_name': 'Hepatitis C (HCV Serology)',
@@ -31,12 +31,22 @@ DATASET_CONFIG = {
     'mammographic_mass': {
         'display_name': 'Mammographic Mass Assessment',
         # BI-RADS radiological features → benign/malignant mass classification
-        'sizes': [50, 100, 200, 350, 700],
+        'sizes': [50, 100, 200, 350, 500],   # capped 700→500 (~50% kernel time saved)
     },
     'thyroid_disease': {
         'display_name': 'Thyroid Disease (Sick Euthyroid)',
         # Lab markers (T3, T4, TSH, etc.) → sick euthyroid vs normal
-        'sizes': [50, 100, 250, 500, 800],
+        'sizes': [50, 100, 200, 350, 500],   # capped 800→500 (~60% kernel time saved)
+    },
+    'indian_liver': {
+        'display_name': 'Indian Liver Patient (ILPD)',
+        # Liver enzymes + bilirubin + albumin/globulin → liver patient vs non-patient
+        'sizes': [50, 100, 200, 300, 400],   # capped 500→400 to reduce QK-SVM O(n²) cost
+    },
+    'chronic_kidney': {
+        'display_name': 'Chronic Kidney Disease',
+        # Blood panel + categorical flags (RBC, WBC, bacteria, etc.) → ckd vs notckd
+        'sizes': [20, 50, 100, 200, 350],
     },
 }
 
@@ -133,6 +143,62 @@ def _load_thyroid_disease_data():
     return X, y
 
 
+def _load_indian_liver_data():
+    """
+    OpenML 'ilpd' dataset (data_id=1480): 583 instances, 10 features.
+    Binary target: liver patient (1) vs non-patient (0).
+    Features: Age, Gender (M/F), Total Bilirubin, Direct Bilirubin,
+              Alkaline Phosphotase, Alamine Aminotransferase (SGPT),
+              Aspartate Aminotransferase (SGOT), Total Proteins,
+              Albumin, Albumin and Globulin Ratio.
+    Missing values: 4 NaN in Albumin_and_Globulin_Ratio → median imputed.
+    Class ratio: ~71% patient / 29% non-patient (moderately imbalanced).
+    Clinical context: identifies liver disease from routine blood-work panel
+    in a South Asian cohort — underrepresented in QML benchmarking literature.
+    """
+    data = fetch_openml('ilpd', version=1, as_frame=True, parser='auto')
+    df = data.data.copy()
+    # Encode gender: Female → 0, Male → 1
+    for col in df.select_dtypes(include=['object', 'category']).columns:
+        df[col] = pd.Categorical(df[col]).codes.astype(float)
+        df[col] = df[col].replace(-1, np.nan)
+    X = df.values.astype(float)
+    imputer = SimpleImputer(strategy='median')
+    X = imputer.fit_transform(X)
+    # Target: '1' = liver patient, '2' = not liver patient
+    raw = data.target.astype(str).str.strip()
+    y = (raw == '1').astype(int).values
+    return X, y
+
+
+def _load_chronic_kidney_data():
+    """
+    UCI / OpenML 'chronic-kidney-disease' dataset: 400 instances, 25 features.
+    Binary target: ckd (1) vs notckd (0).
+    Features: 11 numeric (blood pressure, serum creatinine, haemoglobin,
+              packed cell volume, RBC/WBC counts, albumin, sugar) +
+              14 nominal binary flags (rbc, pc, pcc, ba, htn, dm, cad,
+              appet, pe, ane, etc.).
+    Significant missing values across many columns → median imputation.
+    Class ratio: ~63% ckd / 37% notckd (moderate imbalance).
+    Clinical context: early-stage chronic kidney disease detection from
+    routine lab panels; CKD is a 'silent disease' frequently misdiagnosed
+    and underrepresented in quantum-classical benchmarking studies.
+    """
+    data = fetch_openml('chronic-kidney-disease', version=1, as_frame=True, parser='auto')
+    df = data.data.copy()
+    for col in df.select_dtypes(include=['object', 'category']).columns:
+        df[col] = pd.Categorical(df[col]).codes.astype(float)
+        df[col] = df[col].replace(-1, np.nan)
+    X = df.values.astype(float)
+    imputer = SimpleImputer(strategy='median')
+    X = imputer.fit_transform(X)
+    raw = data.target.astype(str).str.strip().str.lower()
+    # 'ckd' → 1, 'notckd' → 0
+    y = (raw == 'ckd').astype(int).values
+    return X, y
+
+
 # ── Dispatcher ─────────────────────────────────────────────────────────────────
 
 _LOADERS = {
@@ -142,6 +208,8 @@ _LOADERS = {
     'heart_disease':     _load_heart_disease_data,
     'mammographic_mass': _load_mammographic_mass_data,
     'thyroid_disease':   _load_thyroid_disease_data,
+    'indian_liver':      _load_indian_liver_data,
+    'chronic_kidney':    _load_chronic_kidney_data,
 }
 
 

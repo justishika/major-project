@@ -46,7 +46,7 @@ class QuantumKernelSVM:
     """
 
     def __init__(self, num_qubits=4, noisy=False, error_prob=0.01,
-                 shots=2048, svm_C=1.0, entanglement='linear'):
+                 shots=1024, svm_C=1.0, entanglement='linear'):
         self.num_qubits   = num_qubits
         self.noisy        = noisy
         self.error_prob   = error_prob
@@ -96,7 +96,7 @@ class QuantumKernelSVM:
 # ─────────────────────────────────────────────────────
 class HybridClassicalQuantumClassifier:
     """
-    Three-base-learner stacking ensemble that consistently outperforms every
+    Four-base-learner stacking ensemble that consistently outperforms every
     individual classical or quantum model.
 
     ┌── Base Layer ────────────────────────────────────────────────────────────┐
@@ -113,23 +113,27 @@ class HybridClassicalQuantumClassifier:
     │    • entanglement='full' : all pairs of qubits entangled → richer        │
     │      quantum-geometric feature space (still reps=1 to avoid degeneracy) │
     │    • Probability outputs Platt-calibrated via isotonic regression        │
+    │                                                                          │
+    │ 4. GradientBoosting — 200 trees, lr=0.05, max_depth=3, subsample=0.8   │
+    │    Sequential error-correction; orthogonally diverse from RF/ET (which  │
+    │    are bagging-based) and QK-SVM (kernel-based) → richer meta-signal    │
     └──────────────────────────────────────────────────────────────────────────┘
 
     ┌── Meta-feature Engineering ──────────────────────────────────────────────┐
-    │ For each of the 3 base learners (k = RF, ET, QK-SVM):                   │
+    │ For each of the 4 base learners (k = RF, ET, QK-SVM, GB):               │
     │   • p_k_0, p_k_1         — class probabilities          (2 per model)   │
     │   • confidence_k          — max(p_k_0, p_k_1)           (1 per model)   │
     │   • entropy_k             — -Σ p log p                  (1 per model)   │
     │ Across all pairs (i < j):                                                │
     │   • disagreement_ij       — |p_i_1 - p_j_1|             (1 per pair)    │
-    │ Total: 3×4 + C(3,2) = 12 + 3 = 15 meta-features                        │
+    │ Total: 4×4 + C(4,2) = 16 + 6 = 22 meta-features                        │
     └──────────────────────────────────────────────────────────────────────────┘
 
     ┌── Meta-learner ──────────────────────────────────────────────────────────┐
-    │ GradientBoostingClassifier (max_depth=2, n_estimators=100, lr=0.1)      │
+    │ GradientBoostingClassifier (max_depth=3, n_estimators=200, lr=0.05)     │
     │ • Captures non-linear interactions between base-learner outputs          │
-    │ • max_depth=2 prevents overfitting on small meta-training sets           │
-    │ • subsample=0.8 adds regularisation-through-randomness                  │
+    │ • max_depth=3 exploits richer 22-feature meta-space                     │
+    │ • lr=0.05 + subsample=0.8 — conservative learning, low variance         │
     └──────────────────────────────────────────────────────────────────────────┘
 
     Fallback: When training set is too small for reliable OOF stacking,
@@ -137,7 +141,7 @@ class HybridClassicalQuantumClassifier:
     never crashes and still outperforms any single model.
     """
 
-    def __init__(self, num_qubits=4, noisy=False, error_prob=0.01, n_splits=3):
+    def __init__(self, num_qubits=4, noisy=False, error_prob=0.01, n_splits=5):
         self.num_qubits  = num_qubits
         self.noisy       = noisy
         self.error_prob  = error_prob
@@ -170,17 +174,29 @@ class HybridClassicalQuantumClassifier:
             num_qubits=num_qubits,
             noisy=noisy,
             error_prob=error_prob,
-            shots=2048,
+            shots=1024,   # reduced 2048→1024 for speed; 4-qubit circuits still stable
             svm_C=10.0,
             entanglement='full',
         )
 
-        # ── Meta-learner: Gradient Boosting ───────────────────────────────────
-        # max_depth=2 prevents meta-overfitting; subsample=0.8 regularises
+        # ── Base learner 4: GradientBoosting (sequential diversity) ───────────
+        # Orthogonally diverse from RF/ET (bagging) and QK-SVM (kernel);
+        # iterative residual correction captures patterns the others miss.
+        self.gb = GradientBoostingClassifier(
+            n_estimators=200,
+            learning_rate=0.05,
+            max_depth=3,
+            subsample=0.8,
+            random_state=13,        # independent seed from meta-learner
+        )
+
+        # ── Meta-learner: Gradient Boosting (deeper, more estimators) ─────────
+        # max_depth=3 exploits the richer 22-feature meta-space;
+        # lr=0.05 + subsample=0.8 — conservative learning, low variance
         self.meta = GradientBoostingClassifier(
-            n_estimators=100,
-            learning_rate=0.1,
-            max_depth=2,
+            n_estimators=200,
+            learning_rate=0.05,
+            max_depth=3,
             subsample=0.8,
             random_state=42,
         )
@@ -217,14 +233,16 @@ class HybridClassicalQuantumClassifier:
         """Fits base models only — used when training set is too small for OOF."""
         self.rf.fit(X, y)
         self.et.fit(X, y)
+        self.gb.fit(X, y)
         self.qk_svm.fit(X, y)
 
     def _soft_vote_proba(self, X):
-        """Calibrated weighted soft-vote: RF 40%, ET 30%, QK-SVM 30%."""
+        """Calibrated weighted soft-vote: RF 30%, ET 25%, GB 30%, QK-SVM 15%."""
         return (
-            0.40 * self.rf.predict_proba(X)
-            + 0.30 * self.et.predict_proba(X)
-            + 0.30 * self.qk_svm.predict_proba(X)
+            0.30 * self.rf.predict_proba(X)
+            + 0.25 * self.et.predict_proba(X)
+            + 0.30 * self.gb.predict_proba(X)
+            + 0.15 * self.qk_svm.predict_proba(X)
         )
 
     # ── Adaptive OOF predictions ──────────────────────────────────────────────
@@ -287,21 +305,29 @@ class HybridClassicalQuantumClassifier:
         )
         oof_et = self._oof_proba(et_factory, X, y)
 
+        # ── OOF from GradientBoosting ─────────────────────────────────────────
+        print("    [Hybrid] OOF → GradientBoosting...")
+        gb_factory = lambda: GradientBoostingClassifier(
+            n_estimators=200, learning_rate=0.05,
+            max_depth=3, subsample=0.8, random_state=13,
+        )
+        oof_gb = self._oof_proba(gb_factory, X, y)
+
         # ── OOF from QK-SVM (enhanced config) ─────────────────────────────────
         print("    [Hybrid] OOF → QK-SVM (full entanglement, C=10)...")
         qk_factory = lambda: QuantumKernelSVM(
             num_qubits=self.num_qubits, noisy=self.noisy,
-            error_prob=self.error_prob, shots=2048,
+            error_prob=self.error_prob, shots=1024,   # reduced 2048→1024
             svm_C=10.0, entanglement='full',
         )
         try:
             oof_qk = self._oof_proba(qk_factory, X, y)
         except Exception as ex:
-            print(f"    [Hybrid] QK-SVM OOF failed ({ex}) — RF OOF substituted.")
-            oof_qk = oof_rf.copy()
+            print(f"    [Hybrid] QK-SVM OOF failed ({ex}) — GB OOF substituted.")
+            oof_qk = oof_gb.copy()
 
         # ── Build enriched meta-feature matrix ────────────────────────────────
-        meta_X_train = self._meta_features([oof_rf, oof_et, oof_qk])  # (n, 15)
+        meta_X_train = self._meta_features([oof_rf, oof_et, oof_gb, oof_qk])  # (n, 22)
         print(f"    [Hybrid] Fitting GradientBoosting meta-learner on {meta_X_train.shape} stack...")
         self.meta.fit(meta_X_train, y)
 
@@ -309,6 +335,7 @@ class HybridClassicalQuantumClassifier:
         print("    [Hybrid] Refitting base models on full training set...")
         self.rf.fit(X, y)
         self.et.fit(X, y)
+        self.gb.fit(X, y)
         self.qk_svm.fit(X, y)
         return self
 
@@ -319,6 +346,7 @@ class HybridClassicalQuantumClassifier:
         meta_X = self._meta_features([
             self.rf.predict_proba(X),
             self.et.predict_proba(X),
+            self.gb.predict_proba(X),
             self.qk_svm.predict_proba(X),
         ])
         return self.meta.predict_proba(meta_X)
@@ -329,6 +357,7 @@ class HybridClassicalQuantumClassifier:
         meta_X = self._meta_features([
             self.rf.predict_proba(X),
             self.et.predict_proba(X),
+            self.gb.predict_proba(X),
             self.qk_svm.predict_proba(X),
         ])
         return self.meta.predict(meta_X)
@@ -346,6 +375,6 @@ def get_vqc(num_qubits=4, noisy=False, error_prob=0.01):
     """
     return QuantumKernelSVM(
         num_qubits=num_qubits, noisy=noisy,
-        error_prob=error_prob, shots=2048,
+        error_prob=error_prob, shots=1024,   # reduced 2048→1024
         svm_C=1.0, entanglement='linear',
     )

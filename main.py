@@ -33,9 +33,9 @@ OUTPUT_DATA   = os.path.join('results', 'data')
 
 # ── Global experiment settings ────────────────────────────────────────────────
 GLOBAL_CONFIG = {
-    # datasets come from DATASET_CONFIG keys — all 6 diseases
+    # datasets come from DATASET_CONFIG keys — all 8 diseases
     'datasets':      list(DATASET_CONFIG.keys()),
-    'noise_levels':  [0.0, 0.005, 0.01, 0.02, 0.05],
+    'noise_levels':  [0.0, 0.01, 0.05],   # reduced from 5 levels → 3 (~40% fewer QK-SVM fits)
     'num_runs':      1,       # increase to 3 for full statistical averaging (~3× longer)
     'test_size':     0.3,
     'pca_components': 4,      # 4 qubits → keeps circuits shallow
