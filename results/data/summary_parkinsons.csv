@@ -1,9 +1,9 @@
 Dataset,Model,Dataset Size,Mean Accuracy,Std Accuracy
 parkinsons,Hybrid (Classical+Quantum),20,0.8333333333333334,
-parkinsons,Hybrid (Classical+Quantum),50,0.7333333333333333,
-parkinsons,Hybrid (Classical+Quantum),100,0.7333333333333333,
-parkinsons,Hybrid (Classical+Quantum),150,0.8666666666666667,
-parkinsons,Hybrid (Classical+Quantum),195,0.8983050847457628,
+parkinsons,Hybrid (Classical+Quantum),50,0.9333333333333333,
+parkinsons,Hybrid (Classical+Quantum),100,0.6666666666666666,
+parkinsons,Hybrid (Classical+Quantum),150,0.9111111111111111,
+parkinsons,Hybrid (Classical+Quantum),195,0.7457627118644068,
 parkinsons,Logistic Regression,20,0.8333333333333334,
 parkinsons,Logistic Regression,50,0.8666666666666667,
 parkinsons,Logistic Regression,100,0.7333333333333333,

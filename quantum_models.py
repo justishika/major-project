@@ -163,11 +163,21 @@ class HybridClassicalQuantumClassifier:
             n_jobs=-1,
         )
 
-        # ── Base learner 3: QK-SVM (enhanced hybrid config) ───────────────────
-        # Distinct from the standalone baseline:
-        #   C=10         : more flexible boundary (data is well-standardised post-PCA)
-        #   entanglement='full' : all qubit pairs entangled → richer kernel geometry
-        #   noisy=False  : cleanest possible kernel matrix
+        # ── Base learner 3: SVC ───────────────────────────────────────────────
+        self.svc = SVC(
+            probability=True,
+            class_weight='balanced',
+            random_state=42
+        )
+
+        # ── Base learner 4: Logistic Regression ───────────────────────────────
+        self.lr = LogisticRegression(
+            class_weight='balanced',
+            random_state=42,
+            max_iter=1000
+        )
+
+        # ── Base learner 5: QK-SVM (enhanced hybrid config) ───────────────────
         self.qk_svm = QuantumKernelSVM(
             num_qubits=num_qubits,
             noisy=noisy,
@@ -177,13 +187,10 @@ class HybridClassicalQuantumClassifier:
             entanglement='full',
         )
 
-        # ── Meta-learner: Gradient Boosting ───────────────────────────────────
-        # max_depth=2 prevents meta-overfitting; subsample=0.8 regularises
-        self.meta = GradientBoostingClassifier(
-            n_estimators=100,
-            learning_rate=0.1,
-            max_depth=2,
-            subsample=0.8,
+        # ── Meta-learner: Logistic Regression (Oracle Stacking) ───────────────
+        self.meta = LogisticRegression(
+            class_weight='balanced',
+            max_iter=1000,
             random_state=42,
         )
 
@@ -219,14 +226,18 @@ class HybridClassicalQuantumClassifier:
         """Fits base models only — used when training set is too small for OOF."""
         self.rf.fit(X, y)
         self.et.fit(X, y)
+        self.svc.fit(X, y)
+        self.lr.fit(X, y)
         self.qk_svm.fit(X, y)
 
     def _soft_vote_proba(self, X):
-        """Calibrated weighted soft-vote: RF 40%, ET 30%, QK-SVM 30%."""
+        """Calibrated weighted soft-vote ensemble."""
         return (
-            0.40 * self.rf.predict_proba(X)
-            + 0.30 * self.et.predict_proba(X)
-            + 0.30 * self.qk_svm.predict_proba(X)
+            0.20 * self.rf.predict_proba(X)
+            + 0.20 * self.et.predict_proba(X)
+            + 0.20 * self.svc.predict_proba(X)
+            + 0.20 * self.lr.predict_proba(X)
+            + 0.20 * self.qk_svm.predict_proba(X)
         )
 
     # ── Adaptive OOF predictions ──────────────────────────────────────────────
@@ -289,6 +300,16 @@ class HybridClassicalQuantumClassifier:
         )
         oof_et = self._oof_proba(et_factory, X, y)
 
+        # ── OOF from SVC ──────────────────────────────────────────────────────
+        print("    [Hybrid] OOF → SVC...")
+        svc_factory = lambda: SVC(probability=True, class_weight='balanced', random_state=42)
+        oof_svc = self._oof_proba(svc_factory, X, y)
+
+        # ── OOF from Logistic Regression ──────────────────────────────────────
+        print("    [Hybrid] OOF → Logistic Regression...")
+        lr_factory = lambda: LogisticRegression(class_weight='balanced', random_state=42, max_iter=1000)
+        oof_lr = self._oof_proba(lr_factory, X, y)
+
         # ── OOF from QK-SVM (enhanced config) ─────────────────────────────────
         print("    [Hybrid] OOF → QK-SVM (full entanglement, C=10)...")
         qk_factory = lambda: QuantumKernelSVM(
@@ -303,14 +324,16 @@ class HybridClassicalQuantumClassifier:
             oof_qk = oof_rf.copy()
 
         # ── Build enriched meta-feature matrix ────────────────────────────────
-        meta_X_train = self._meta_features([oof_rf, oof_et, oof_qk])  # (n, 15)
-        print(f"    [Hybrid] Fitting GradientBoosting meta-learner on {meta_X_train.shape} stack...")
+        meta_X_train = self._meta_features([oof_rf, oof_et, oof_svc, oof_lr, oof_qk])
+        print(f"    [Hybrid] Fitting Logistic meta-learner on {meta_X_train.shape} stack...")
         self.meta.fit(meta_X_train, y)
 
         # ── Refit ALL base models on the FULL training set ────────────────────
         print("    [Hybrid] Refitting base models on full training set...")
         self.rf.fit(X, y)
         self.et.fit(X, y)
+        self.svc.fit(X, y)
+        self.lr.fit(X, y)
         self.qk_svm.fit(X, y)
         return self
 
@@ -321,6 +344,8 @@ class HybridClassicalQuantumClassifier:
         meta_X = self._meta_features([
             self.rf.predict_proba(X),
             self.et.predict_proba(X),
+            self.svc.predict_proba(X),
+            self.lr.predict_proba(X),
             self.qk_svm.predict_proba(X),
         ])
         return self.meta.predict_proba(meta_X)
@@ -331,6 +356,8 @@ class HybridClassicalQuantumClassifier:
         meta_X = self._meta_features([
             self.rf.predict_proba(X),
             self.et.predict_proba(X),
+            self.svc.predict_proba(X),
+            self.lr.predict_proba(X),
             self.qk_svm.predict_proba(X),
         ])
         return self.meta.predict(meta_X)
