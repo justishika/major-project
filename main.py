@@ -33,7 +33,7 @@ OUTPUT_DATA   = os.path.join('results', 'data')
 
 # ── Global experiment settings ────────────────────────────────────────────────
 GLOBAL_CONFIG = {
-    # datasets come from DATASET_CONFIG keys — all 6 diseases
+    # datasets come from DATASET_CONFIG keys — all 8 diseases (incl. Wilson's & ALS)
     'datasets':      list(DATASET_CONFIG.keys()),
     'noise_levels':  [0.0, 0.005, 0.01, 0.02, 0.05],
     'num_runs':      1,       # increase to 3 for full statistical averaging (~3× longer)

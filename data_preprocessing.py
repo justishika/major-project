@@ -1,5 +1,14 @@
 import pandas as pd
 import numpy as np
+import ssl
+import urllib.request
+import os
+try:
+    _create_unverified_https_context = ssl._create_unverified_context
+except AttributeError:
+    pass
+else:
+    ssl._create_default_https_context = _create_unverified_https_context
 from sklearn.model_selection import train_test_split, StratifiedShuffleSplit
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
@@ -8,6 +17,9 @@ from sklearn.datasets import load_breast_cancer, fetch_openml
 
 # ── Remote dataset URLs ────────────────────────────────────────────────────────
 PARKINSONS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/parkinsons/parkinsons.data'
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+WILSONS_CLEAN_CSV = os.path.join(PROJECT_DIR, 'wilsons_clean.csv')
+PCA_READY_DATASETS = {'wilsons_disease'}
 
 # ── Per-dataset configuration exported for main.py ────────────────────────────
 DATASET_CONFIG = {
@@ -37,6 +49,14 @@ DATASET_CONFIG = {
         'display_name': 'Thyroid Disease (Sick Euthyroid)',
         # Lab markers (T3, T4, TSH, etc.) → sick euthyroid vs normal
         'sizes': [50, 100, 250, 500, 800],
+    },
+    'wilsons_disease': {
+        'display_name': "Wilson's Disease (Synthetic)",
+        'sizes': [50, 100, 150, 200, 250],
+    },
+    'als': {
+        'display_name': 'Amyotrophic Lateral Sclerosis (Synthetic)',
+        'sizes': [50, 100, 150, 200, 250],
     },
 }
 
@@ -133,6 +153,99 @@ def _load_thyroid_disease_data():
     return X, y
 
 
+def _load_wilsons_disease_data():
+    """
+    Synthetic Wilson's Disease dataset (500 samples, 250 per class).
+
+    Clinical features based on published diagnostic criteria:
+      - Age at onset (Wilson's peaks 5-35 yrs)
+      - Serum ceruloplasmin (low in WD: <20 mg/dL vs normal 20-40)
+      - 24h urine copper (elevated in WD: >100 ug/day vs normal <40)
+      - Hepatic copper (elevated in WD: >250 ug/g dry weight)
+      - Kayser-Fleischer rings (present in ~95% neurological WD)
+      - Serum AST (elevated in hepatic WD)
+      - Serum ALT (elevated in hepatic WD)
+      - Serum bilirubin (elevated in hepatic WD)
+    Labels: 0 = healthy control, 1 = Wilson's Disease patient
+    """
+    rng = np.random.default_rng(42)
+    n_per_class = 250
+    # --- Healthy controls ---
+    X_ctrl = np.column_stack([
+        rng.normal(40, 15, n_per_class),           # Age
+        rng.normal(30, 5,  n_per_class),           # Ceruloplasmin (normal)
+        rng.normal(25, 8,  n_per_class),           # 24h Urine Copper (normal)
+        rng.normal(30, 10, n_per_class),           # Hepatic Copper (normal)
+        rng.binomial(1, 0.02, n_per_class),        # KF rings (rare in healthy)
+        rng.normal(25, 6,  n_per_class),           # AST
+        rng.normal(25, 6,  n_per_class),           # ALT
+        rng.normal(0.9, 0.2, n_per_class),         # Bilirubin
+    ])
+    y_ctrl = np.zeros(n_per_class, dtype=int)
+    # --- Wilson's patients ---
+    X_wd = np.column_stack([
+        rng.normal(22, 8,  n_per_class),           # Age (younger onset)
+        rng.normal(10, 4,  n_per_class),           # Ceruloplasmin (low)
+        rng.normal(160, 40, n_per_class),          # 24h Urine Copper (high)
+        rng.normal(300, 60, n_per_class),          # Hepatic Copper (very high)
+        rng.binomial(1, 0.85, n_per_class),        # KF rings (present in ~85%)
+        rng.normal(65, 20, n_per_class),           # AST (elevated)
+        rng.normal(72, 22, n_per_class),           # ALT (elevated)
+        rng.normal(2.5, 0.6, n_per_class),         # Bilirubin (elevated)
+    ])
+    y_wd = np.ones(n_per_class, dtype=int)
+    X = np.vstack([X_ctrl, X_wd])
+    y = np.concatenate([y_ctrl, y_wd])
+    # Shuffle
+    idx = rng.permutation(len(y))
+    return X[idx], y[idx]
+
+def _load_als_data():
+    """
+    Synthetic ALS dataset (500 samples, 250 per class).
+
+    Clinical features based on published ALS diagnostic criteria (El Escorial):
+      - Age at symptom onset (ALS typically 55-75 yrs)
+      - ALSFRS-R monthly decline rate (fast progression: >1.5 pts/month)
+      - Forced Vital Capacity FVC% (reduced in ALS: <80%)
+      - Creatine Kinase CK levels (elevated in active denervation)
+      - Bulbar onset (present in ~30% of ALS cases)
+      - EMG denervation signs (required for ALS diagnosis)
+      - Upper Motor Neuron (UMN) signs
+      - Lower Motor Neuron (LMN) signs
+    Labels: 0 = healthy/mimic control, 1 = ALS patient
+    """
+    rng = np.random.default_rng(99)
+    n_per_class = 250
+    # --- Healthy controls / ALS mimics ---
+    X_ctrl = np.column_stack([
+        rng.normal(52, 14, n_per_class),           # Age
+        rng.normal(0.08, 0.04, n_per_class),       # ALSFRS-R decline (slow/none)
+        rng.normal(96, 5, n_per_class),            # FVC% (normal)
+        rng.normal(145, 35, n_per_class),          # CK (normal)
+        rng.binomial(1, 0.05, n_per_class),        # Bulbar onset (rare in controls)
+        rng.binomial(1, 0.08, n_per_class),        # EMG denervation (rare)
+        rng.binomial(1, 0.07, n_per_class),        # UMN signs (rare)
+        rng.binomial(1, 0.07, n_per_class),        # LMN signs (rare)
+    ])
+    y_ctrl = np.zeros(n_per_class, dtype=int)
+    # --- ALS patients ---
+    X_als = np.column_stack([
+        rng.normal(62, 10, n_per_class),           # Age (older onset)
+        rng.normal(1.6, 0.5, n_per_class),         # ALSFRS-R decline (fast)
+        rng.normal(72, 16, n_per_class),           # FVC% (reduced)
+        rng.normal(260, 85, n_per_class),          # CK (elevated)
+        rng.binomial(1, 0.30, n_per_class),        # Bulbar onset (30%)
+        rng.binomial(1, 0.92, n_per_class),        # EMG denervation (92%)
+        rng.binomial(1, 0.87, n_per_class),        # UMN signs (87%)
+        rng.binomial(1, 0.88, n_per_class),        # LMN signs (88%)
+    ])
+    y_als = np.ones(n_per_class, dtype=int)
+    X = np.vstack([X_ctrl, X_als])
+    y = np.concatenate([y_ctrl, y_als])
+    idx = rng.permutation(len(y))
+    return X[idx], y[idx]
+
 # ── Dispatcher ─────────────────────────────────────────────────────────────────
 
 _LOADERS = {
@@ -142,6 +255,8 @@ _LOADERS = {
     'heart_disease':     _load_heart_disease_data,
     'mammographic_mass': _load_mammographic_mass_data,
     'thyroid_disease':   _load_thyroid_disease_data,
+    'wilsons_disease':   _load_wilsons_disease_data,
+    'als':               _load_als_data,
 }
 
 
@@ -165,7 +280,12 @@ def load_and_preprocess_data(dataset_name='parkinsons', n_components=4, use_pca=
                 'explained_variance_ratio': None, 'total_explained_variance': None}
 
     # 2. PCA — guard against requesting more components than features/samples
-    if use_pca:
+    if use_pca and key in PCA_READY_DATASETS:
+        X_proc = X_scaled
+        pca_info['n_components'] = X_scaled.shape[1]
+        pca_info['explained_variance_ratio'] = None
+        pca_info['total_explained_variance'] = 1.0
+    elif use_pca:
         n_comp = min(n_components, X_scaled.shape[1], X_scaled.shape[0] - 1)
         pca = PCA(n_components=n_comp)
         X_proc = pca.fit_transform(X_scaled)
