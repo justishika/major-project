@@ -150,6 +150,7 @@ class HybridClassicalQuantumClassifier:
             min_samples_leaf=1,
             class_weight='balanced',
             random_state=42,
+            n_jobs=-1,
         )
 
         # ── Base learner 2: ExtraTrees (maximally diverse from RF) ─────────────
@@ -159,6 +160,7 @@ class HybridClassicalQuantumClassifier:
             min_samples_leaf=1,
             class_weight='balanced',
             random_state=7,          # different seed → different random splits
+            n_jobs=-1,
         )
 
         # ── Base learner 3: QK-SVM (enhanced hybrid config) ───────────────────
@@ -253,7 +255,7 @@ class HybridClassicalQuantumClassifier:
             except Exception as ex:
                 print(f"      [Hybrid OOF fold failed: {ex}] — RF fallback")
                 fb = RandomForestClassifier(n_estimators=100,
-                                            class_weight='balanced', random_state=42)
+                                            class_weight='balanced', random_state=42, n_jobs=-1)
                 fb.fit(X[tr_idx], y[tr_idx])
                 oof[val_idx] = fb.predict_proba(X[val_idx])
         return oof
@@ -275,7 +277,7 @@ class HybridClassicalQuantumClassifier:
         print("    [Hybrid] OOF → RF...")
         rf_factory = lambda: RandomForestClassifier(
             n_estimators=400, min_samples_leaf=1,
-            class_weight='balanced', random_state=42,
+            class_weight='balanced', random_state=42, n_jobs=-1,
         )
         oof_rf = self._oof_proba(rf_factory, X, y)
 
@@ -283,7 +285,7 @@ class HybridClassicalQuantumClassifier:
         print("    [Hybrid] OOF → ExtraTrees...")
         et_factory = lambda: ExtraTreesClassifier(
             n_estimators=400, min_samples_leaf=1,
-            class_weight='balanced', random_state=7,
+            class_weight='balanced', random_state=7, n_jobs=-1,
         )
         oof_et = self._oof_proba(et_factory, X, y)
 

@@ -8,6 +8,8 @@ from sklearn.datasets import load_breast_cancer, fetch_openml
 
 # ── Remote dataset URLs ────────────────────────────────────────────────────────
 PARKINSONS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/parkinsons/parkinsons.data'
+ACUTE_NEPHRITIS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/acute/diagnosis.data'
+HEART_FAILURE_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/00519/heart_failure_clinical_records_dataset.csv'
 
 # ── Per-dataset configuration exported for main.py ────────────────────────────
 DATASET_CONFIG = {
@@ -37,6 +39,14 @@ DATASET_CONFIG = {
         'display_name': 'Thyroid Disease (Sick Euthyroid)',
         # Lab markers (T3, T4, TSH, etc.) → sick euthyroid vs normal
         'sizes': [50, 100, 250, 500, 800],
+    },
+    'acute_nephritis': {
+        'display_name': 'Acute Nephritis',
+        'sizes': [20, 50, 75, 100, 120],
+    },
+    'heart_failure': {
+        'display_name': 'Heart Failure Clinical Records',
+        'sizes': [50, 100, 150, 200, 299],
     },
 }
 
@@ -133,6 +143,45 @@ def _load_thyroid_disease_data():
     return X, y
 
 
+def _load_acute_nephritis_data():
+    """
+    UCI Acute Inflammations dataset (predicts Acute Nephritis).
+    120 instances, 6 features.
+    Custom format: UTF-16, tab-separated, commas for decimals.
+    """
+    import urllib.request
+    req = urllib.request.urlopen(ACUTE_NEPHRITIS_URL)
+    data = req.read().decode('utf-16')
+    lines = data.strip().split('\n')
+    
+    X_list = []
+    y_list = []
+    for line in lines:
+        if not line.strip(): continue
+        parts = line.strip().split('\t')
+        temp = float(parts[0].replace(',', '.'))
+        features = [temp] + [(1.0 if p == 'yes' else 0.0) for p in parts[1:6]]
+        target = 1 if parts[7] == 'yes' else 0
+        X_list.append(features)
+        y_list.append(target)
+        
+    X = np.array(X_list).astype(float)
+    y = np.array(y_list).astype(int)
+    return X, y
+
+
+def _load_heart_failure_data():
+    """
+    UCI Heart Failure Clinical Records dataset.
+    299 instances, 13 features.
+    Target: DEATH_EVENT (0 or 1).
+    """
+    df = pd.read_csv(HEART_FAILURE_URL)
+    X = df.drop(columns=['DEATH_EVENT']).values.astype(float)
+    y = df['DEATH_EVENT'].values.astype(int)
+    return X, y
+
+
 # ── Dispatcher ─────────────────────────────────────────────────────────────────
 
 _LOADERS = {
@@ -142,6 +191,8 @@ _LOADERS = {
     'heart_disease':     _load_heart_disease_data,
     'mammographic_mass': _load_mammographic_mass_data,
     'thyroid_disease':   _load_thyroid_disease_data,
+    'acute_nephritis':   _load_acute_nephritis_data,
+    'heart_failure':     _load_heart_failure_data,
 }
 
 

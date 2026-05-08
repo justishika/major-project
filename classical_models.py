@@ -37,8 +37,8 @@ def run_classical_models(X_train, y_train, X_test, y_test):
     """
     models = {
         'SVM': SVC(kernel='rbf', C=10, gamma='scale', probability=True, random_state=42),
-        'Logistic Regression': LogisticRegression(max_iter=500, C=1.0, random_state=42),
-        'Random Forest': RandomForestClassifier(n_estimators=100, max_depth=None, random_state=42)
+        'Logistic Regression': LogisticRegression(max_iter=500, C=1.0, random_state=42, n_jobs=-1),
+        'Random Forest': RandomForestClassifier(n_estimators=100, max_depth=None, random_state=42, n_jobs=-1)
     }
     
     results = {}
