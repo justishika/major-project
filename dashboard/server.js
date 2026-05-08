@@ -31,7 +31,7 @@ app.post('/api/run', (req, res) => {
   const pythonExecutable = process.platform === 'win32' 
     ? path.resolve(__dirname, '..', 'venv', 'Scripts', 'python.exe')
     : path.resolve(__dirname, '..', 'venv', 'bin', 'python');
-  const args = ['main.py', '-d', disease];
+  const args = ['-u', 'main.py', '-d', disease];
   const cwd = path.resolve(__dirname, '..'); // Run from major project root
 
   const child = spawn(pythonExecutable, args, { cwd });
