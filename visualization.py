@@ -7,6 +7,19 @@ import numpy as np
 import os
 from sklearn.metrics import precision_recall_curve, roc_curve, auc, confusion_matrix
 
+plt.style.use("dark_background")
+plt.rcParams.update({
+    "axes.facecolor": "#0a0a0e",
+    "figure.facecolor": "#0a0a0e",
+    "axes.edgecolor": "#1e1e2d",
+    "axes.grid": True,
+    "grid.color": "#1e1e2d",
+    "text.color": "#f8f8f8",
+    "axes.labelcolor": "#a0a0b0",
+    "xtick.color": "#a0a0b0",
+    "ytick.color": "#a0a0b0",
+    "lines.linewidth": 2.5,
+})
 # ─────────────────────────────────────────────────────────────────────────────
 # VISUALIZATION MODULE
 # All graphs saved as PNG to results/graphs/<dataset_name>/ (per disease).
@@ -14,9 +27,9 @@ from sklearn.metrics import precision_recall_curve, roc_curve, auc, confusion_ma
 # plt.close() is called after every save — no interactive display needed.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Colour constants — Hybrid always gets standout red so it pops in every chart
-_HYBRID_COLOUR = '#c0392b'
-_PALETTE       = 'Set2'
+# Colour constants — Hybrid always gets standout neon cyan so it pops in every chart
+_HYBRID_COLOUR = '#08F7FE' # Neon Cyan
+_PALETTE       = 'cool'
 
 # Models shown in the primary comparison charts
 _CANONICAL = [
@@ -59,7 +72,6 @@ def save_results_table(results_list, filename="benchmark_results.csv"):
 # ── 1. Accuracy vs Dataset Size ───────────────────────────────────────────────
 def plot_accuracy_vs_size(df, output_dir="."):
     _prep(output_dir)
-    sns.set_theme(style="whitegrid")
 
     agg = (
         df.groupby(['Dataset', 'Model', 'Dataset Size'], as_index=False)['Accuracy']
@@ -83,6 +95,7 @@ def plot_accuracy_vs_size(df, output_dir="."):
         ax.set_xlabel('Dataset Size')
         ax.set_ylabel('Mean Accuracy')
         ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=9)
+
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"accuracy_vs_size_{ds}.png"), dpi=130)
         plt.close()
@@ -149,6 +162,7 @@ def plot_noise_sensitivity(df, baseline_model='SVM', output_dir="."):
         plt.xlabel('Depolarizing Noise Probability')
         plt.ylabel('Mean Accuracy')
         plt.legend()
+
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"noise_sensitivity_{ds}.png"), dpi=130)
         plt.close()
@@ -179,6 +193,7 @@ def plot_precision_recall_tradeoff(curve_records, output_dir="."):
         plt.xlabel('Recall')
         plt.ylabel('Precision')
         plt.legend(fontsize=9)
+
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"precision_recall_curve_{ds}.png"), dpi=130)
         plt.close()
@@ -212,6 +227,7 @@ def plot_roc_curve(curve_records, output_dir="."):
         plt.xlabel('False Positive Rate')
         plt.ylabel('True Positive Rate')
         plt.legend(fontsize=9)
+
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f"roc_curve_{ds}.png"), dpi=130)
         plt.close()
@@ -357,7 +373,6 @@ def plot_cross_disease_summary(df, output_dir="."):
     immediately obvious.  Saved to results/graphs/cross_disease_summary.png
     """
     _prep(output_dir)
-    sns.set_theme(style='whitegrid')
 
     keep = ['SVM', 'Logistic Regression', 'Random Forest',
             'QK-SVM (Noiseless)', 'Hybrid (Classical+Quantum)']

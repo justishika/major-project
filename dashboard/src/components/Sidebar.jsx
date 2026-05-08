@@ -41,6 +41,27 @@ const Sidebar = ({ activeDisease, setActiveDisease }) => {
         <span style={{ fontWeight: 500 }}>Cross-Disease Summary</span>
       </button>
 
+      <button 
+        onClick={() => setActiveDisease('runner')}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          padding: '0.75rem 1rem',
+          borderRadius: 'var(--radius-sm)',
+          background: activeDisease === 'runner' ? 'var(--accent-glow)' : 'transparent',
+          border: '1px solid',
+          borderColor: activeDisease === 'runner' ? 'var(--accent-primary)' : 'transparent',
+          color: activeDisease === 'runner' ? 'var(--text-primary)' : 'var(--text-secondary)',
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'var(--transition)'
+        }}
+      >
+        <LayoutDashboard size={18} />
+        <span style={{ fontWeight: 500 }}>Run Pipeline</span>
+      </button>
+
       <div style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600 }}>
         Individual Diseases
       </div>

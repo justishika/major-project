@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "lucide-react": "^1.14.0",
     "papaparse": "^5.5.3",
     "react": "^19.2.5",

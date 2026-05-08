@@ -69,14 +69,14 @@ def regenerate():
         else:
             max_size = int(ds_df['Dataset Size'].max())
 
-        print(f"\n  Regenerating graphs for: {dataset_name}  →  {ds_output}/")
+        print(f"\n  Regenerating graphs for: {dataset_name}  ->  {ds_output}/")
         plot_accuracy_vs_size(df_can,  output_dir=ds_output)
         plot_model_stability(df_can,   output_dir=ds_output)
         plot_noise_sensitivity(ds_df, baseline_model='SVM', output_dir=ds_output)
         plot_overfitting_behavior(ds_df, output_dir=ds_output)
         plot_all_individual_metrics(ds_df, output_dir=ds_output)
         plot_metric_heatmap(ds_df, max_size=max_size, output_dir=ds_output)
-        print(f"  ✓ {dataset_name} done.")
+        print(f"  OK {dataset_name} done.")
 
     # ── Cross-disease summary ─────────────────────────────────────────────────
     print("\n  Generating cross-disease summary...")
