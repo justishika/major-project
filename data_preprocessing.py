@@ -15,7 +15,9 @@ from sklearn.impute import SimpleImputer
 from sklearn.datasets import load_breast_cancer, fetch_openml
 
 # ── Remote dataset URLs ────────────────────────────────────────────────────────
-PARKINSONS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/parkinsons/parkinsons.data'
+PARKINSONS_URL      = 'https://archive.ics.uci.edu/ml/machine-learning-databases/parkinsons/parkinsons.data'
+ACUTE_NEPHRITIS_URL = 'https://archive.ics.uci.edu/ml/machine-learning-databases/acute/diagnosis.data'
+HEART_FAILURE_URL   = 'https://archive.ics.uci.edu/ml/machine-learning-databases/00519/heart_failure_clinical_records_dataset.csv'
 
 # ── Per-dataset configuration exported for main.py ────────────────────────────
 DATASET_CONFIG = {
@@ -65,6 +67,16 @@ DATASET_CONFIG = {
         'display_name': 'Amyotrophic Lateral Sclerosis (Synthetic)',
         # Synthetic dataset based on El Escorial ALS diagnostic criteria
         'sizes': [50, 100, 150, 200, 250],
+    },
+    'acute_nephritis': {
+        'display_name': 'Acute Nephritis',
+        # UCI Acute Inflammations — 120 instances, 6 clinical features
+        'sizes': [20, 50, 75, 100, 120],
+    },
+    'heart_failure': {
+        'display_name': 'Heart Failure Clinical Records',
+        # UCI Heart Failure — 299 instances, 13 clinical features
+        'sizes': [50, 100, 150, 200, 299],
     },
 }
 
@@ -312,6 +324,51 @@ def _load_als_data():
     return X[idx], y[idx]
 
 
+def _load_acute_nephritis_data():
+    """
+    UCI Acute Inflammations dataset (predicts Acute Nephritis).
+    120 instances, 6 features.
+    Custom format: UTF-16, tab-separated, commas used as decimal separators.
+    Target: nephritis of renal pelvis origin (column index 7).
+    Clinical context: decision support for acute urinary system inflammations.
+    """
+    import urllib.request
+    req = urllib.request.urlopen(ACUTE_NEPHRITIS_URL)
+    data = req.read().decode('utf-16')
+    lines = data.strip().split('\n')
+    X_list, y_list = [], []
+    for line in lines:
+        if not line.strip():
+            continue
+        parts = line.strip().split('\t')
+        temp = float(parts[0].replace(',', '.'))
+        features = [temp] + [(1.0 if p.strip() == 'yes' else 0.0) for p in parts[1:6]]
+        target = 1 if parts[7].strip() == 'yes' else 0
+        X_list.append(features)
+        y_list.append(target)
+    X = np.array(X_list).astype(float)
+    y = np.array(y_list).astype(int)
+    return X, y
+
+
+def _load_heart_failure_data():
+    """
+    UCI Heart Failure Clinical Records dataset.
+    299 instances, 13 features (age, anaemia, creatinine phosphokinase,
+    diabetes, ejection fraction, high blood pressure, platelets,
+    serum creatinine, serum sodium, sex, smoking, time).
+    Binary target: DEATH_EVENT (0 = survived, 1 = deceased).
+    Clinical context: predicts mortality during follow-up period.
+    """
+    import urllib.request
+    import io
+    req = urllib.request.urlopen(HEART_FAILURE_URL)
+    df = pd.read_csv(io.BytesIO(req.read()))
+    X = df.drop(columns=['DEATH_EVENT']).values.astype(float)
+    y = df['DEATH_EVENT'].values.astype(int)
+    return X, y
+
+
 # ── Dispatcher ─────────────────────────────────────────────────────────────────
 
 _LOADERS = {
@@ -325,6 +382,8 @@ _LOADERS = {
     'chronic_kidney':    _load_chronic_kidney_data,
     'wilsons_disease':   _load_wilsons_disease_data,
     'als':               _load_als_data,
+    'acute_nephritis':   _load_acute_nephritis_data,
+    'heart_failure':     _load_heart_failure_data,
 }
 
 
