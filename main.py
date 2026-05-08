@@ -33,11 +33,7 @@ OUTPUT_DATA   = os.path.join('results', 'data')
 
 # ── Global experiment settings ────────────────────────────────────────────────
 GLOBAL_CONFIG = {
-<<<<<<< HEAD
-    # datasets come from DATASET_CONFIG keys — all 8 diseases
-=======
-    # datasets come from DATASET_CONFIG keys — all 8 diseases (incl. Wilson's & ALS)
->>>>>>> abad671 (feat: add Wilson's Disease and ALS synthetic datasets with loaders and config)
+    # datasets come from DATASET_CONFIG keys — all 12 diseases
     'datasets':      list(DATASET_CONFIG.keys()),
     'noise_levels':  [0.0, 0.01, 0.05],   # reduced from 5 levels → 3 (~40% fewer QK-SVM fits)
     'num_runs':      1,       # increase to 3 for full statistical averaging (~3× longer)
@@ -78,7 +74,8 @@ def _run_dataset(dataset_name, pca_components, num_runs, noise_levels, test_size
     X, y, pca_info = load_and_preprocess_data(
         dataset_name=dataset_name, n_components=pca_components, use_pca=True
     )
-    print(f"  PCA explained variance: {pca_info['total_explained_variance']:.4f}")
+    _var = pca_info['total_explained_variance']
+    print(f"  PCA explained variance: {_var:.4f}" if _var is not None else "  PCA: skipped")
     print(f"  Dataset shape after PCA: {X.shape}  |  Classes: {np.bincount(y).tolist()}")
 
     ds_results = []
@@ -306,4 +303,51 @@ def run_experiment():
 
 
 if __name__ == "__main__":
-    run_experiment()
+    import argparse
+    parser = argparse.ArgumentParser(
+        description='Hybrid Classical-Quantum Disease Benchmark'
+    )
+    parser.add_argument(
+        '--disease', '-d',
+        type=str,
+        default=None,
+        choices=list(DATASET_CONFIG.keys()),
+        metavar='DISEASE',
+        help=(
+            'Run a single disease instead of all. Choices: '
+            + ', '.join(DATASET_CONFIG.keys())
+        ),
+    )
+    args = parser.parse_args()
+
+    if args.disease:
+        # ── Single-disease mode ───────────────────────────────────────────────
+        name = args.disease
+        print(f"\n{'='*65}")
+        print(f"  DISEASE: {DATASET_CONFIG[name]['display_name'].upper()}  [single-disease mode]")
+        print(f"{'='*65}")
+        ds_results, ds_curves = _run_dataset(
+            dataset_name   = name,
+            pca_components = GLOBAL_CONFIG['pca_components'],
+            num_runs       = GLOBAL_CONFIG['num_runs'],
+            noise_levels   = GLOBAL_CONFIG['noise_levels'],
+            test_size      = GLOBAL_CONFIG['test_size'],
+        )
+        _visualize_dataset(name, ds_results, ds_curves)
+
+        # Also write/update the global benchmark CSV so it includes this disease
+        os.makedirs(OUTPUT_DATA, exist_ok=True)
+        out_csv = os.path.join(OUTPUT_DATA, 'benchmark_results.csv')
+        new_df  = pd.DataFrame(ds_results)
+        if os.path.exists(out_csv):
+            existing = pd.read_csv(out_csv)
+            # Replace any existing rows for this disease, keep the rest
+            existing = existing[existing['Dataset'] != name]
+            combined = pd.concat([existing, new_df], ignore_index=True)
+        else:
+            combined = new_df
+        combined.to_csv(out_csv, index=False)
+        print(f"\n  ✓ Results appended to {out_csv}")
+    else:
+        # ── Full pipeline mode ────────────────────────────────────────────────
+        run_experiment()
