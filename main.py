@@ -33,7 +33,11 @@ OUTPUT_DATA   = os.path.join('results', 'data')
 
 # ── Global experiment settings ────────────────────────────────────────────────
 GLOBAL_CONFIG = {
+<<<<<<< HEAD
     # datasets come from DATASET_CONFIG keys — all 8 diseases
+=======
+    # datasets come from DATASET_CONFIG keys — all 8 diseases (incl. Wilson's & ALS)
+>>>>>>> abad671 (feat: add Wilson's Disease and ALS synthetic datasets with loaders and config)
     'datasets':      list(DATASET_CONFIG.keys()),
     'noise_levels':  [0.0, 0.01, 0.05],   # reduced from 5 levels → 3 (~40% fewer QK-SVM fits)
     'num_runs':      1,       # increase to 3 for full statistical averaging (~3× longer)
