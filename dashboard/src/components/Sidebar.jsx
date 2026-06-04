@@ -1,33 +1,37 @@
-import React, { useState } from 'react';
-import { DISEASES } from '../dataLoader';
+import React, { useState, useEffect } from 'react';
+import { DISEASES, getBenchmarkResults, computeOverviewStats } from '../dataLoader';
 
-/* ── Disease icons ──────────────────────────────────── */
-const DISEASE_ICONS = {
-  parkinsons:        '🧠',
-  breast_cancer:     '🩺',
-  hepatitis_c:       '🫀',
-  heart_disease:     '❤️',
-  mammographic_mass: '🔬',
-  thyroid_disease:   '⚗️',
-  indian_liver:      '🫁',
-  chronic_kidney:    '🧫',
-  wilsons_disease:   '🧬',
-  als:               '⚡',
-  acute_nephritis:   '💊',
-  heart_failure:     '🫶',
-};
-
-/* ── Nav items ──────────────────────────────────────── */
+/* ── Nav sections ──────────────────────────────────────── */
 const NAV_TOP = [
-  { id: 'summary', label: 'Cross-Disease Summary', icon: '◈' },
-  { id: 'runner',  label: 'Pipeline Runner',        icon: '▶' },
+  { id: 'summary',        label: 'Research Overview',     icon: '◈' },
+  { id: 'leaderboard',    label: 'Global Leaderboard',    icon: '🏆' },
+  { id: 'cross-disease',  label: 'Cross-Disease Analysis', icon: '📊' },
+  { id: 'runner',         label: 'Pipeline Runner',       icon: '▶' },
 ];
 
-const Sidebar = ({ activeDisease, setActiveDisease, sidebarOpen, setSidebarOpen }) => {
+const Sidebar = ({ activeView, setActiveView, sidebarOpen, setSidebarOpen }) => {
   const [hovered, setHovered] = useState(null);
+  const [dynamicStats, setDynamicStats] = useState(null);
+  const [diseasesWithData, setDiseasesWithData] = useState(new Set());
+
+  // Load data to compute dynamic stats and data availability
+  useEffect(() => {
+    getBenchmarkResults().then(data => {
+      if (data.length > 0) {
+        const stats = computeOverviewStats(data, null);
+        setDynamicStats(stats);
+        // Determine which diseases have benchmark data
+        const diseases = new Set();
+        data.forEach(row => {
+          if (row['Dataset']) diseases.add(row['Dataset']);
+        });
+        setDiseasesWithData(diseases);
+      }
+    });
+  }, []);
 
   const navigate = (id) => {
-    setActiveDisease(id);
+    setActiveView(id);
     if (window.innerWidth < 900) setSidebarOpen(false);
   };
 
@@ -117,7 +121,7 @@ const Sidebar = ({ activeDisease, setActiveDisease, sidebarOpen, setSidebarOpen 
         {/* ── Top Navigation ── */}
         <div style={{ padding: '1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
           {NAV_TOP.map(item => {
-            const isActive = activeDisease === item.id;
+            const isActive = activeView === item.id;
             return (
               <button
                 key={item.id}
@@ -184,16 +188,16 @@ const Sidebar = ({ activeDisease, setActiveDisease, sidebarOpen, setSidebarOpen 
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-            {DISEASES.map((disease, idx) => {
-              const isActive = activeDisease === disease.id;
-              const icon = DISEASE_ICONS[disease.id] || '🔬';
+            {DISEASES.map((disease) => {
+              const isActive = activeView === disease.id;
+              const hasData = diseasesWithData.has(disease.id);
               return (
                 <button
                   key={disease.id}
                   onClick={() => navigate(disease.id)}
                   onMouseEnter={() => setHovered(disease.id)}
                   onMouseLeave={() => setHovered(null)}
-                  title={disease.name}
+                  title={`${disease.name}${hasData ? '' : ' (No benchmark data)'}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -205,7 +209,7 @@ const Sidebar = ({ activeDisease, setActiveDisease, sidebarOpen, setSidebarOpen 
                       : hovered === disease.id ? 'var(--bg-elevated)' : 'transparent',
                     border: '1px solid',
                     borderColor: isActive ? 'rgba(139,92,246,0.25)' : 'transparent',
-                    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    color: isActive ? 'var(--text-primary)' : hasData ? 'var(--text-secondary)' : 'var(--text-muted)',
                     cursor: 'pointer',
                     textAlign: 'left',
                     transition: 'var(--transition)',
@@ -213,16 +217,24 @@ const Sidebar = ({ activeDisease, setActiveDisease, sidebarOpen, setSidebarOpen 
                     position: 'relative',
                   }}
                 >
-                  <span style={{ fontSize: '0.95rem', lineHeight: 1, flexShrink: 0 }}>{icon}</span>
+                  <span style={{ fontSize: '0.95rem', lineHeight: 1, flexShrink: 0 }}>{disease.icon}</span>
                   <span style={{
                     fontSize: '0.825rem',
                     fontWeight: isActive ? 600 : 400,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap',
+                    flex: 1,
                   }}>
                     {disease.name}
                   </span>
+                  {/* Data availability dot */}
+                  <span style={{
+                    width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
+                    background: hasData ? 'var(--success)' : 'var(--text-muted)',
+                    boxShadow: hasData ? '0 0 6px var(--success)' : 'none',
+                    opacity: hasData ? 1 : 0.5,
+                  }} />
                   {isActive && (
                     <div style={{
                       position: 'absolute', left: 0, top: '20%', bottom: '20%',
@@ -236,7 +248,7 @@ const Sidebar = ({ activeDisease, setActiveDisease, sidebarOpen, setSidebarOpen 
           </div>
         </div>
 
-        {/* ── Footer ── */}
+        {/* ── Footer — Dynamic stats ── */}
         <div style={{
           padding: '1rem 1.5rem',
           borderTop: '1px solid var(--border-subtle)',
@@ -246,9 +258,14 @@ const Sidebar = ({ activeDisease, setActiveDisease, sidebarOpen, setSidebarOpen 
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
             <div className="dot dot-quantum" />
-            <span>6 Models · 10 Diseases · 220+ Graphs</span>
+            <span>
+              {dynamicStats
+                ? `${dynamicStats.coreModelCount} Models · ${dynamicStats.diseasesWithBenchmarkData} Diseases w/ Data · ${dynamicStats.totalExperiments} Experiments`
+                : 'Loading stats…'
+              }
+            </span>
           </div>
-          <div>Hybrid Classical-Quantum ML · 2025</div>
+          <div>Hybrid Classical-Quantum ML Benchmark</div>
         </div>
       </div>
     </>

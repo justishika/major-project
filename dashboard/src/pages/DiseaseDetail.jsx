@@ -1,23 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getDiseaseSummary, DISEASES } from '../dataLoader';
+import { getDiseaseSummary, getMetadata, getMetadataForDisease, getBenchmarkResults, DISEASES } from '../dataLoader';
 import MetricsTable from '../components/MetricsTable';
 import GraphCard from '../components/GraphCard';
-
-/* ── Disease metadata ────────────────────────────── */
-const DISEASE_META = {
-  parkinsons:        { icon: '🧠', samples: 195, features: '22 vocal', color: '#a78bfa' },
-  breast_cancer:     { icon: '🩺', samples: 400, features: '30 cell nuclei', color: '#f472b6' },
-  hepatitis_c:       { icon: '🫀', samples: 120, features: '19 serology', color: '#fb923c' },
-  heart_disease:     { icon: '❤️', samples: 220, features: '13 clinical', color: '#f87171' },
-  mammographic_mass: { icon: '🔬', samples: 500, features: '5 BI-RADS', color: '#e879f9' },
-  thyroid_disease:   { icon: '⚗️', samples: 500, features: '29 lab panel', color: '#34d399' },
-  indian_liver:      { icon: '🫁', samples: 400, features: '10 enzymes', color: '#fbbf24' },
-  chronic_kidney:    { icon: '🧫', samples: 350, features: '25 blood panel', color: '#60a5fa' },
-  wilsons_disease:   { icon: '🧬', samples: 250, features: '8 copper markers', color: '#a3e635' },
-  als:               { icon: '⚡', samples: 250, features: '8 neurological', color: '#22d3ee' },
-  acute_nephritis:   { icon: '💊', samples: 120, features: '6 clinical', color: '#f97316' },
-  heart_failure:     { icon: '🫶', samples: 299, features: '13 clinical', color: '#ec4899' },
-};
 
 /* ── Tab definitions ─────────────────────────────── */
 const TABS = [
@@ -59,30 +43,44 @@ const MATRIX_MODELS = [
   { suffix: 'Logistic_Regression',      title: 'Logistic Regression',        type: 'classical', desc: 'Classical linear baseline' },
 ];
 
-/* ── Hybrid confusion matrix has two naming variants ── */
+/* ── Confusion matrix URL builder ── */
 function confusionMatrixUrl(diseaseId, suffix) {
-  if (suffix === 'Hybrid_Classical+Quantum') {
-    // Try both variants
-    return `/results/graphs/${diseaseId}/confusion_matrix_${diseaseId}_Hybrid_Classical+Quantum.png`;
-  }
   return `/results/graphs/${diseaseId}/confusion_matrix_${diseaseId}_${suffix}.png`;
 }
 
 const DiseaseDetail = ({ diseaseId }) => {
-  const [data, setData]   = useState([]);
-  const [tab, setTab]     = useState('key');
+  const [data, setData]           = useState([]);
+  const [tab, setTab]             = useState('key');
+  const [metadata, setMetadata]   = useState(null);
+  const [diseaseMeta, setDiseaseMeta] = useState(null);
+  const [hasBenchmarkData, setHasBenchmarkData] = useState(null); // null = loading
 
   const disease = DISEASES.find(d => d.id === diseaseId);
-  const meta    = DISEASE_META[diseaseId] || {};
 
   useEffect(() => {
     setTab('key');
-    getDiseaseSummary(diseaseId).then(setData);
+    setHasBenchmarkData(null);
+
+    // Load per-disease summary CSV
+    getDiseaseSummary(diseaseId).then(d => {
+      setData(d);
+      setHasBenchmarkData(d.length > 0);
+    });
+
+    // Load metadata for this disease
+    getMetadata().then(meta => {
+      setMetadata(meta);
+      const dm = getMetadataForDisease(meta, diseaseId);
+      setDiseaseMeta(dm);
+    });
   }, [diseaseId]);
 
   if (!disease) return null;
 
   const gUrl = (suffix) => `/results/graphs/${diseaseId}/${suffix}_${diseaseId}.png`;
+
+  // Check if disease has any graphs by trying to load key graph
+  const hasGraphs = hasBenchmarkData !== false;
 
   return (
     <div className="flex-col gap-8" style={{ paddingBottom: '4rem' }}>
@@ -96,11 +94,11 @@ const DiseaseDetail = ({ diseaseId }) => {
         borderRadius: 'var(--radius-xl)',
         overflow: 'hidden',
       }}>
-        {/* Accent glow behind icon */}
+        {/* Accent glow */}
         <div style={{
           position: 'absolute', top: '-30px', right: '2rem',
           width: '180px', height: '180px', borderRadius: '50%',
-          background: `radial-gradient(ellipse, ${meta.color || 'var(--quantum)'}20 0%, transparent 70%)`,
+          background: `radial-gradient(ellipse, rgba(139,92,246,0.15) 0%, transparent 70%)`,
           pointerEvents: 'none',
         }} />
 
@@ -108,12 +106,12 @@ const DiseaseDetail = ({ diseaseId }) => {
           {/* Large emoji icon */}
           <div style={{
             width: '64px', height: '64px', borderRadius: '18px',
-            background: `${meta.color || 'var(--quantum)'}15`,
-            border: `1px solid ${meta.color || 'var(--quantum)'}30`,
+            background: 'rgba(139,92,246,0.12)',
+            border: '1px solid rgba(139,92,246,0.25)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '2rem', flexShrink: 0,
           }}>
-            {meta.icon || '🔬'}
+            {disease.icon || '🔬'}
           </div>
 
           <div style={{ flex: 1 }}>
@@ -122,22 +120,112 @@ const DiseaseDetail = ({ diseaseId }) => {
               Dataset-specific analysis across 6 models · Hybrid Classical-Quantum Benchmark
             </p>
 
-            {/* Meta pills */}
+            {/* Meta pills — from metadata.json, not hardcoded */}
             <div style={{ display: 'flex', gap: '0.625rem', flexWrap: 'wrap' }}>
-              {meta.samples && (
-                <span className="badge badge-classical">📦 {meta.samples} samples</span>
+              {diseaseMeta ? (
+                <>
+                  <span className="badge badge-classical">📦 {diseaseMeta.samples} samples</span>
+                  <span className="badge badge-quantum">🔢 {diseaseMeta.features} features</span>
+                  <span className="badge badge-neutral">⚖ Imbalance: {diseaseMeta.imbalanceRatio}</span>
+                  <span className="badge badge-hybrid">⚛ 4 PCA qubits</span>
+                  <span className="badge badge-neutral">70/30 train/test split</span>
+                </>
+              ) : (
+                <>
+                  <span className="badge badge-hybrid">⚛ 4 PCA qubits</span>
+                  <span className="badge badge-neutral">70/30 train/test split</span>
+                </>
               )}
-              {meta.features && (
-                <span className="badge badge-quantum">🔢 {meta.features} features</span>
+            </div>
+
+            {/* Data availability indicator */}
+            <div style={{ marginTop: '0.75rem' }}>
+              {hasBenchmarkData === true && (
+                <span className="data-status available">
+                  <span className="status-dot" /> Benchmark data available
+                </span>
               )}
-              <span className="badge badge-hybrid">⚛ 4 PCA qubits</span>
-              <span className="badge" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid var(--border-subtle)' }}>
-                70/30 train/test split
-              </span>
+              {hasBenchmarkData === false && (
+                <span className="data-status unavailable">
+                  <span className="status-dot" /> No benchmark data — run pipeline with: python main.py -d {diseaseId}
+                </span>
+              )}
+              {hasBenchmarkData === null && (
+                <span className="data-status unavailable">
+                  <span className="status-dot" /> Loading...
+                </span>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── Dataset Info from metadata.json ────────────────── */}
+      {diseaseMeta && (
+        <div className="grid grid-cols-2 gap-4">
+          {/* PCA Variance */}
+          {diseaseMeta.pcaVarianceMap && (
+            <div className="card-static" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ color: 'var(--quantum-light)' }}>📐</span> PCA Variance Explained
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {Object.entries(diseaseMeta.pcaVarianceMap).map(([components, variance]) => (
+                  <div key={components} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', width: '80px', fontFamily: 'var(--font-mono)' }}>
+                      {components} comp.
+                    </span>
+                    <div style={{
+                      flex: 1, height: '8px', borderRadius: '4px',
+                      background: 'var(--bg-elevated)',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        width: `${variance}%`, height: '100%',
+                        borderRadius: '4px',
+                        background: `linear-gradient(90deg, var(--quantum), var(--quantum-light))`,
+                        transition: 'width 0.5s var(--ease)',
+                      }} />
+                    </div>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', width: '50px', textAlign: 'right' }}>
+                      {variance}%
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="source-tag" style={{ marginTop: '0.75rem' }}>📁 metadata.json</div>
+            </div>
+          )}
+
+          {/* Clinical Features */}
+          {diseaseMeta.clinicalFeatures && (
+            <div className="card-static" style={{ padding: '1.5rem' }}>
+              <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ color: 'var(--classical)' }}>🏷</span> Clinical Features (Sample)
+              </h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {diseaseMeta.clinicalFeatures.map((f, i) => (
+                  <span key={i} style={{
+                    padding: '0.35rem 0.75rem',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border-subtle)',
+                    borderRadius: '999px',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-secondary)',
+                    fontFamily: 'var(--font-mono)',
+                  }}>
+                    {f}
+                  </span>
+                ))}
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Showing {diseaseMeta.clinicalFeatures.length} of {diseaseMeta.features} total features
+              </div>
+              <div className="source-tag" style={{ marginTop: '0.5rem' }}>📁 metadata.json</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Tabs ──────────────────────────────────────────────── */}
       <div>
@@ -158,16 +246,27 @@ const DiseaseDetail = ({ diseaseId }) => {
 
       {/* KEY GRAPHS */}
       {tab === 'key' && (
-        <div className="grid grid-cols-2 gap-6 stagger animate-slide-up">
-          {KEY_GRAPHS.map(g => (
-            <GraphCard
-              key={g.key}
-              title={g.title}
-              description={g.desc}
-              imageUrl={gUrl(g.key)}
-            />
-          ))}
-        </div>
+        hasGraphs ? (
+          <div className="grid grid-cols-2 gap-6 stagger animate-slide-up">
+            {KEY_GRAPHS.map(g => (
+              <GraphCard
+                key={g.key}
+                title={g.title}
+                description={g.desc}
+                imageUrl={gUrl(g.key)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="no-data-state">
+            <div className="no-data-icon">📈</div>
+            <div className="no-data-title">No Graphs Available</div>
+            <div className="no-data-desc">
+              Run the benchmark pipeline for this disease to generate graphs:<br />
+              <code>python main.py -d {diseaseId}</code>
+            </div>
+          </div>
+        )
       )}
 
       {/* INDIVIDUAL METRICS */}
@@ -235,14 +334,20 @@ const DiseaseDetail = ({ diseaseId }) => {
       {tab === 'table' && (
         <div className="animate-slide-up">
           {data.length > 0 ? (
-            <MetricsTable data={data} title={`Performance Summary · ${disease.name}`} />
+            <>
+              <MetricsTable data={data} title={`Performance Summary · ${disease.name}`} />
+              <div className="source-tag" style={{ marginTop: '0.5rem' }}>
+                📁 Source: results/data/summary_{diseaseId}.csv
+              </div>
+            </>
           ) : (
-            <div style={{
-              textAlign: 'center', padding: '4rem',
-              color: 'var(--text-muted)', fontSize: '0.9rem',
-            }}>
-              <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📋</div>
-              Summary CSV not found. Run the benchmark pipeline first.
+            <div className="no-data-state">
+              <div className="no-data-icon">📋</div>
+              <div className="no-data-title">Summary Data Not Available</div>
+              <div className="no-data-desc">
+                Run the benchmark pipeline to generate summary data:<br />
+                <code>python main.py -d {diseaseId}</code>
+              </div>
             </div>
           )}
         </div>

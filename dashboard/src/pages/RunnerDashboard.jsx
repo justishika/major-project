@@ -1,40 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DISEASES } from '../dataLoader';
 
-/* Fake log lines for demo theater */
-const DEMO_LOGS = [
-  { text: '>>> Initializing Hybrid Classical-Quantum Pipeline', color: '#fbbf24', delay: 200 },
-  { text: 'Loading dataset...', color: null, delay: 600 },
-  { text: '  PCA explained variance: 0.8342', color: null, delay: 900 },
-  { text: '  Dataset shape after PCA: (195, 4)  |  Classes: [75, 120]', color: null, delay: 1200 },
-  { text: '\n  === Run 1/1 | N=195 ===', color: '#a78bfa', delay: 1600 },
-  { text: '  Training Classical Models...', color: null, delay: 2000 },
-  { text: '    ✓ SVM                 Accuracy: 0.898', color: '#34d399', delay: 2400 },
-  { text: '    ✓ Random Forest       Accuracy: 0.914', color: '#34d399', delay: 2700 },
-  { text: '    ✓ Logistic Regression Accuracy: 0.881', color: '#34d399', delay: 3000 },
-  { text: '  Training QK-SVM (Noiseless)...', color: null, delay: 3500 },
-  { text: '    [Quantum Circuit: 4 qubits, ZZFeatureMap depth=2]', color: '#a78bfa', delay: 3900 },
-  { text: '    ✓ QK-SVM (Noiseless)  Accuracy: 0.932', color: '#34d399', delay: 5200 },
-  { text: '  Training QK-SVM (Noisy) [noise=0.01]...', color: null, delay: 5600 },
-  { text: '    ✓ QK-SVM (Noisy)      Accuracy: 0.915', color: '#34d399', delay: 7100 },
-  { text: '  Training Hybrid (RF + QK-SVM stacking)...', color: null, delay: 7500 },
-  { text: '    ✓ Hybrid Model        Accuracy: 0.966', color: '#fbbf24', delay: 9000 },
-  { text: '\n  Saving graphs → results/graphs/...', color: null, delay: 9400 },
-  { text: '  ✓ accuracy_vs_size.png', color: '#34d399', delay: 9700 },
-  { text: '  ✓ roc_curve.png', color: '#34d399', delay: 9900 },
-  { text: '  ✓ confusion_matrices (6 models)', color: '#34d399', delay: 10100 },
-  { text: '  ✓ metric_heatmap.png', color: '#34d399', delay: 10300 },
-  { text: '\n  ===== BENCHMARK COMPLETE =====', color: '#fbbf24', delay: 10700 },
-  { text: '  Hybrid model outperformed all baselines.', color: '#fbbf24', delay: 11000 },
-  { text: 'PROCESS FINISHED.', color: '#34d399', delay: 11400 },
-];
-
+/* ── Pipeline steps (describes the actual workflow) ── */
 const STEPS = [
   { icon: '⚙', label: 'Load & Preprocess',  desc: 'StandardScaler → PCA(4) → [−π, π] scaling' },
   { icon: '📊', label: 'Classical Training', desc: 'SVM, Random Forest, Logistic Regression' },
   { icon: '⚛',  label: 'Quantum Kernel',     desc: 'ZZFeatureMap, 4-qubit circuit, noiseless + noisy' },
-  { icon: '🔗', label: 'Hybrid Stacking',    desc: 'Learned meta-learner (RF + QK-SVM)' },
-  { icon: '📈', label: 'Visualization',      desc: '22 performance graphs per disease' },
+  { icon: '🔗', label: 'Hybrid Stacking',    desc: 'Learned meta-learner (RF + ExtraTrees + GB + QK-SVM)' },
+  { icon: '📈', label: 'Visualization',      desc: 'Performance graphs per disease' },
 ];
 
 const RunnerDashboard = () => {
@@ -43,57 +16,131 @@ const RunnerDashboard = () => {
   const [isDone, setIsDone]       = useState(false);
   const [logs, setLogs]           = useState([]);
   const [activeStep, setActiveStep] = useState(-1);
+  const [backendStatus, setBackendStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
   const logsEndRef = useRef(null);
-  const timersRef  = useRef([]);
+  const eventSourceRef = useRef(null);
 
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
-  /* Clear all pending timers on unmount */
-  useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
+  // Check backend connectivity
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const res = await fetch('/api/run', { method: 'OPTIONS' });
+        setBackendStatus(res.ok || res.status === 404 || res.status === 405 ? 'online' : 'offline');
+      } catch {
+        // Try a simple POST to see if it responds at all
+        try {
+          const res = await fetch('/api/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ disease: '__ping__' }),
+          });
+          setBackendStatus('online');
+        } catch {
+          setBackendStatus('offline');
+        }
+      }
+    };
+    checkBackend();
+  }, []);
 
-  const clearTimers = () => {
-    timersRef.current.forEach(clearTimeout);
-    timersRef.current = [];
+  // Cleanup SSE on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
+  const inferStep = (logLine) => {
+    const lower = logLine.toLowerCase();
+    if (lower.includes('loading') || lower.includes('preprocess') || lower.includes('pca')) return 0;
+    if (lower.includes('classical') || lower.includes('svm') || lower.includes('random forest') || lower.includes('logistic')) return 1;
+    if (lower.includes('quantum') || lower.includes('qk-svm') || lower.includes('circuit')) return 2;
+    if (lower.includes('hybrid') || lower.includes('stacking')) return 3;
+    if (lower.includes('saving') || lower.includes('graph') || lower.includes('plot') || lower.includes('visualization')) return 4;
+    return null;
   };
 
-  const handleSimulatedRun = () => {
+  const handleRealRun = async () => {
     if (isRunning) return;
-    clearTimers();
+
     setIsRunning(true);
     setIsDone(false);
     setLogs([]);
     setActiveStep(0);
 
     const disease = DISEASES.find(d => d.id === selectedDisease);
-    const prefix  = `>>> Starting Quantum Pipeline for ${disease?.name || selectedDisease}...\n`;
 
-    setLogs([{ text: prefix, color: '#fbbf24' }]);
+    // Start the pipeline via API
+    try {
+      const res = await fetch('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ disease: selectedDisease }),
+      });
 
-    DEMO_LOGS.forEach((entry, idx) => {
-      const t = setTimeout(() => {
-        setLogs(prev => [...prev, { text: entry.text, color: entry.color }]);
+      const result = await res.json();
 
-        // Update step indicator
-        if (idx === 3)  setActiveStep(0);
-        if (idx === 5)  setActiveStep(1);
-        if (idx === 9)  setActiveStep(2);
-        if (idx === 12) setActiveStep(3);
-        if (idx === 15) setActiveStep(4);
+      if (!res.ok) {
+        setLogs([{ text: `Error: ${result.error || 'Failed to start pipeline'}`, color: '#ef4444' }]);
+        setIsRunning(false);
+        return;
+      }
 
-        if (idx === DEMO_LOGS.length - 1) {
-          setIsRunning(false);
-          setIsDone(true);
-          setActiveStep(-1);
+      setLogs([{ text: `>>> Starting pipeline for ${disease?.name || selectedDisease}...`, color: '#fbbf24' }]);
+
+      // Connect to SSE log stream
+      const eventSource = new EventSource(`/api/logs/${selectedDisease}`);
+      eventSourceRef.current = eventSource;
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.log) {
+            const isError = data.log.startsWith('ERROR:');
+            setLogs(prev => [...prev, {
+              text: data.log,
+              color: isError ? '#ef4444' : data.log.includes('✓') ? '#34d399' : null,
+            }]);
+
+            // Infer pipeline step from log content
+            const step = inferStep(data.log);
+            if (step !== null) setActiveStep(step);
+          }
+
+          if (data.done) {
+            setIsRunning(false);
+            setIsDone(true);
+            setActiveStep(-1);
+            eventSource.close();
+          }
+        } catch {
+          // Ignore parse errors
         }
-      }, entry.delay);
-      timersRef.current.push(t);
-    });
+      };
+
+      eventSource.onerror = () => {
+        setLogs(prev => [...prev, { text: 'Connection to backend lost.', color: '#ef4444' }]);
+        setIsRunning(false);
+        eventSource.close();
+      };
+
+    } catch (err) {
+      setLogs([{ text: `Error: Could not connect to backend server. Is it running?`, color: '#ef4444' }]);
+      setIsRunning(false);
+    }
   };
 
   const handleReset = () => {
-    clearTimers();
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
     setIsRunning(false);
     setIsDone(false);
     setLogs([]);
@@ -121,6 +168,46 @@ const RunnerDashboard = () => {
         </p>
       </div>
 
+      {/* ── Backend Status ────────────────────────────────── */}
+      {backendStatus === 'offline' && (
+        <div style={{
+          padding: '1rem 1.5rem',
+          background: 'rgba(239,68,68,0.06)',
+          border: '1px solid rgba(239,68,68,0.2)',
+          borderRadius: 'var(--radius-md)',
+          display: 'flex', alignItems: 'flex-start', gap: '0.75rem',
+          fontSize: '0.85rem',
+        }}>
+          <span style={{ color: '#ef4444', fontSize: '1.1rem' }}>⚠</span>
+          <div>
+            <div style={{ color: '#f87171', fontWeight: 600, marginBottom: '0.25rem' }}>Backend Server Not Running</div>
+            <div style={{ color: 'var(--text-secondary)' }}>
+              Start the backend server to enable pipeline execution:
+              <code style={{ display: 'block', marginTop: '0.5rem' }}>cd dashboard && node server.js</code>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {backendStatus === 'online' && (
+        <div style={{
+          padding: '0.75rem 1.25rem',
+          background: 'rgba(16,185,129,0.06)',
+          border: '1px solid rgba(16,185,129,0.2)',
+          borderRadius: 'var(--radius-md)',
+          display: 'flex', alignItems: 'center', gap: '0.5rem',
+          fontSize: '0.82rem',
+          color: '#34d399',
+        }}>
+          <span style={{
+            width: '8px', height: '8px', borderRadius: '50%',
+            background: '#34d399', boxShadow: '0 0 6px #34d399',
+            display: 'inline-block',
+          }} />
+          Backend server connected — ready to execute benchmarks
+        </div>
+      )}
+
       {/* ── Control Panel ────────────────────────────────────── */}
       <div style={{
         display: 'grid',
@@ -128,7 +215,7 @@ const RunnerDashboard = () => {
         gap: '1.5rem',
       }}>
         {/* Left — Config */}
-        <div className="card" style={{ padding: '1.75rem' }}>
+        <div className="card-static" style={{ padding: '1.75rem' }}>
           <h3 style={{ marginBottom: '1.25rem', fontSize: '1rem' }}>⚙ Configure Run</h3>
 
           <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
@@ -149,8 +236,8 @@ const RunnerDashboard = () => {
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button
               className="btn btn-primary"
-              onClick={handleSimulatedRun}
-              disabled={isRunning}
+              onClick={handleRealRun}
+              disabled={isRunning || backendStatus === 'offline'}
               style={{ flex: 1, animation: isRunning ? 'pulse-glow 2s infinite' : 'none' }}
             >
               {isRunning ? (
@@ -188,7 +275,7 @@ const RunnerDashboard = () => {
         </div>
 
         {/* Right — Steps */}
-        <div className="card" style={{ padding: '1.75rem' }}>
+        <div className="card-static" style={{ padding: '1.75rem' }}>
           <h3 style={{ marginBottom: '1.25rem', fontSize: '1rem' }}>📋 Execution Pipeline</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
             {STEPS.map((step, idx) => {
@@ -265,7 +352,10 @@ const RunnerDashboard = () => {
         <div className="terminal-body">
           {logs.length === 0 ? (
             <span style={{ color: 'var(--text-muted)' }}>
-              Select a disease and press Run Benchmark to start…
+              {backendStatus === 'offline'
+                ? 'Backend server not running. Start with: node server.js'
+                : 'Select a disease and press Run Benchmark to start…'
+              }
               <span style={{ animation: 'blink 1.2s infinite' }}>_</span>
             </span>
           ) : (
@@ -286,7 +376,8 @@ const RunnerDashboard = () => {
           0%,100% { box-shadow: 0 0 20px rgba(139,92,246,0.3); }
           50%      { box-shadow: 0 0 40px rgba(139,92,246,0.7); }
         }
-      `}</style>
+      `}
+      </style>
     </div>
   );
 };

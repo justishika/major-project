@@ -3,9 +3,11 @@ import Sidebar from './components/Sidebar';
 import CrossDiseaseSummary from './pages/CrossDiseaseSummary';
 import DiseaseDetail from './pages/DiseaseDetail';
 import RunnerDashboard from './pages/RunnerDashboard';
+import GlobalLeaderboard from './pages/GlobalLeaderboard';
+import CrossDiseaseAnalysis from './pages/CrossDiseaseAnalysis';
 
 function App() {
-  const [activeDisease, setActiveDisease] = useState('summary');
+  const [activeView, setActiveView] = useState('summary');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Close sidebar on small screens by default
@@ -14,11 +16,27 @@ function App() {
     if (mq.matches) setSidebarOpen(false);
   }, []);
 
+  const renderPage = () => {
+    switch (activeView) {
+      case 'summary':
+        return <CrossDiseaseSummary />;
+      case 'leaderboard':
+        return <GlobalLeaderboard />;
+      case 'cross-disease':
+        return <CrossDiseaseAnalysis />;
+      case 'runner':
+        return <RunnerDashboard />;
+      default:
+        // Disease detail pages — activeView is the disease ID
+        return <DiseaseDetail diseaseId={activeView} />;
+    }
+  };
+
   return (
     <div className="flex" style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
       <Sidebar
-        activeDisease={activeDisease}
-        setActiveDisease={setActiveDisease}
+        activeView={activeView}
+        setActiveView={setActiveView}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
       />
@@ -47,14 +65,8 @@ function App() {
           transition: 'margin-left 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}
       >
-        <div key={activeDisease} className="animate-slide-up" style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          {activeDisease === 'summary' ? (
-            <CrossDiseaseSummary />
-          ) : activeDisease === 'runner' ? (
-            <RunnerDashboard />
-          ) : (
-            <DiseaseDetail diseaseId={activeDisease} />
-          )}
+        <div key={activeView} className="animate-slide-up" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          {renderPage()}
         </div>
       </main>
     </div>
