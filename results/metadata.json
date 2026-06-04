@@ -1,0 +1,185 @@
+{
+  "Parkinson's Disease": {
+    "name": "Parkinson's Disease",
+    "difficulty": "Medium",
+    "samples": 195,
+    "features": 22,
+    "imbalanceRatio": "25:75",
+    "pcaVarianceMap": {
+      "2": 70.2,
+      "4": 83.9,
+      "8": 95.8,
+      "16": 99.9
+    },
+    "clinicalFeatures": [
+      "MDVP:Fo(Hz)",
+      "MDVP:Fhi(Hz)",
+      "MDVP:Jitter(%)",
+      "MDVP:Shimmer"
+    ]
+  },
+  "Breast Cancer": {
+    "name": "Breast Cancer",
+    "difficulty": "Medium",
+    "samples": 569,
+    "features": 30,
+    "imbalanceRatio": "37:63",
+    "pcaVarianceMap": {
+      "2": 63.2,
+      "4": 79.2,
+      "8": 92.6,
+      "16": 98.9
+    },
+    "clinicalFeatures": [
+      "Tumor Radius",
+      "Texture",
+      "Perimeter",
+      "Smoothness Index"
+    ]
+  },
+  "Hepatitis C (HCV Serology)": {
+    "name": "Hepatitis C (HCV Serology)",
+    "difficulty": "Medium",
+    "samples": 155,
+    "features": 19,
+    "imbalanceRatio": "21:79",
+    "pcaVarianceMap": {
+      "2": 31.7,
+      "4": 47.1,
+      "8": 68.7,
+      "16": 95.2
+    },
+    "clinicalFeatures": [
+      "Age",
+      "Bilirubin",
+      "Cholesterol",
+      "Creatinine"
+    ]
+  },
+  "Heart Disease (Cleveland)": {
+    "name": "Heart Disease (Cleveland)",
+    "difficulty": "Medium",
+    "samples": 270,
+    "features": 13,
+    "imbalanceRatio": "56:44",
+    "pcaVarianceMap": {
+      "2": 35.8,
+      "4": 54.3,
+      "8": 81.2
+    },
+    "clinicalFeatures": [
+      "Age",
+      "Resting BP",
+      "Cholesterol",
+      "Max Heart Rate"
+    ]
+  },
+  "Thyroid Disease (Sick Euthyroid)": {
+    "name": "Thyroid Disease (Sick Euthyroid)",
+    "difficulty": "Medium",
+    "samples": 3103,
+    "features": 22,
+    "imbalanceRatio": "93:7",
+    "pcaVarianceMap": {
+      "2": 18.2,
+      "4": 31.3,
+      "8": 51.3,
+      "16": 84.6
+    },
+    "clinicalFeatures": [
+      "TSH Level",
+      "T3 Level",
+      "TT4 Level",
+      "T4U Level"
+    ]
+  },
+  "Indian Liver Patient (ILPD)": {
+    "name": "Indian Liver Patient (ILPD)",
+    "difficulty": "Medium",
+    "samples": 583,
+    "features": 10,
+    "imbalanceRatio": "29:71",
+    "pcaVarianceMap": {
+      "2": 48.0,
+      "4": 72.3,
+      "8": 98.2
+    },
+    "clinicalFeatures": [
+      "Age",
+      "Total Bilirubin",
+      "Alkaline Phosphotase",
+      "Alamine Aminotransferase"
+    ]
+  },
+  "Wilson's Disease (Synthetic)": {
+    "name": "Wilson's Disease (Synthetic)",
+    "difficulty": "Medium",
+    "samples": 500,
+    "features": 8,
+    "imbalanceRatio": "50:50",
+    "pcaVarianceMap": {
+      "2": 82.5,
+      "4": 91.1,
+      "8": 100.0
+    },
+    "clinicalFeatures": [
+      "Feature 0",
+      "Feature 1",
+      "Feature 2",
+      "Feature 3"
+    ]
+  },
+  "Amyotrophic Lateral Sclerosis (Synthetic)": {
+    "name": "Amyotrophic Lateral Sclerosis (Synthetic)",
+    "difficulty": "Medium",
+    "samples": 500,
+    "features": 8,
+    "imbalanceRatio": "50:50",
+    "pcaVarianceMap": {
+      "2": 67.0,
+      "4": 83.4,
+      "8": 100.0
+    },
+    "clinicalFeatures": [
+      "Feature 0",
+      "Feature 1",
+      "Feature 2",
+      "Feature 3"
+    ]
+  },
+  "Acute Nephritis": {
+    "name": "Acute Nephritis",
+    "difficulty": "Medium",
+    "samples": 120,
+    "features": 6,
+    "imbalanceRatio": "58:42",
+    "pcaVarianceMap": {
+      "2": 65.0,
+      "4": 93.3
+    },
+    "clinicalFeatures": [
+      "Feature 0",
+      "Feature 1",
+      "Feature 2",
+      "Feature 3"
+    ]
+  },
+  "Heart Failure Clinical Records": {
+    "name": "Heart Failure Clinical Records",
+    "difficulty": "Medium",
+    "samples": 299,
+    "features": 12,
+    "imbalanceRatio": "68:32",
+    "pcaVarianceMap": {
+      "2": 27.0,
+      "4": 46.9,
+      "8": 78.1
+    },
+    "clinicalFeatures": [
+      "Feature 0",
+      "Feature 1",
+      "Feature 2",
+      "Feature 3"
+    ]
+  }
+}
