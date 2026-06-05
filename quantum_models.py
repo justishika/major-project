@@ -9,10 +9,11 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
 from sklearn.calibration import CalibratedClassifierCV
 from qiskit.circuit.library import ZZFeatureMap
-from qiskit.utils import QuantumInstance
+from qiskit.primitives import BackendSamplerV2
+from qiskit_algorithms.state_fidelities import ComputeUncompute
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, depolarizing_error
-from qiskit_machine_learning.kernels import QuantumKernel
+from qiskit_machine_learning.kernels import FidelityQuantumKernel
 
 
 # ─────────────────────────────────────────────────────
@@ -60,17 +61,18 @@ class QuantumKernelSVM:
             feature_dimension=self.num_qubits,
             reps=1,
             entanglement=self.entanglement,
-        )
+        ).decompose()
         backend = (
-            AerSimulator(noise_model=create_noise_model(self.error_prob))
-            if self.noisy else AerSimulator()
+            AerSimulator(noise_model=create_noise_model(self.error_prob), seed_simulator=42)
+            if self.noisy else AerSimulator(seed_simulator=42)
         )
-        qi = QuantumInstance(
-            backend, shots=self.shots,
-            seed_simulator=42, seed_transpiler=42,
-            optimization_level=0,
+        sampler = BackendSamplerV2(backend=backend)
+        fidelity = ComputeUncompute(
+            sampler=sampler,
+            shots=self.shots,
+            transpiler_options={'optimization_level': 0, 'seed_transpiler': 42}
         )
-        self.kernel = QuantumKernel(feature_map=feature_map, quantum_instance=qi)
+        self.kernel = FidelityQuantumKernel(feature_map=feature_map, fidelity=fidelity)
         self.svm    = SVC(
             kernel='precomputed', probability=True,
             C=self.svm_C, random_state=42,

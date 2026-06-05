@@ -2,9 +2,10 @@
 import numpy as np
 from data_preprocessing import load_and_preprocess_data, get_stratified_subsample, prepare_train_test_split
 from qiskit.circuit.library import ZZFeatureMap
-from qiskit.utils import QuantumInstance
+from qiskit.primitives import BackendSamplerV2
+from qiskit_algorithms.state_fidelities import ComputeUncompute
 from qiskit_aer import AerSimulator
-from qiskit_machine_learning.kernels import QuantumKernel
+from qiskit_machine_learning.kernels import FidelityQuantumKernel
 
 X, y, _ = load_and_preprocess_data('parkinsons', n_components=4, use_pca=True)
 X_sub, y_sub = get_stratified_subsample(X, y, sample_size=50, random_state=42)
@@ -14,12 +15,17 @@ print(f"X_train range per feature:")
 for i in range(X_train.shape[1]):
     print(f"  feat {i}: [{X_train[:,i].min():.3f}, {X_train[:,i].max():.3f}]")
 
-backend = AerSimulator()
-qi = QuantumInstance(backend, shots=2048, seed_simulator=42, seed_transpiler=42)
+backend = AerSimulator(seed_simulator=42)
+sampler = BackendSamplerV2(backend=backend)
+fidelity = ComputeUncompute(
+    sampler=sampler, 
+    shots=2048, 
+    transpiler_options={'optimization_level': 0, 'seed_transpiler': 42}
+)
 
 for reps in [1, 2]:
-    fm = ZZFeatureMap(feature_dimension=4, reps=reps, entanglement='linear')
-    kernel = QuantumKernel(feature_map=fm, quantum_instance=qi)
+    fm = ZZFeatureMap(feature_dimension=4, reps=reps, entanglement='linear').decompose()
+    kernel = FidelityQuantumKernel(feature_map=fm, fidelity=fidelity)
     
     # Compute small kernel (first 8 training points only)
     K = kernel.evaluate(x_vec=X_train[:8])

@@ -29,8 +29,8 @@ app.post('/api/run', (req, res) => {
 
   // Spawn the python process using the virtual environment
   const pythonExecutable = process.platform === 'win32' 
-    ? path.resolve(__dirname, '..', 'venv', 'Scripts', 'python.exe')
-    : path.resolve(__dirname, '..', 'venv', 'bin', 'python');
+    ? path.resolve(__dirname, '..', '.venv', 'Scripts', 'python.exe')
+    : path.resolve(__dirname, '..', '.venv', 'bin', 'python');
   const args = ['-u', 'main.py', '-d', disease];
   const cwd = path.resolve(__dirname, '..'); // Run from major project root
 
