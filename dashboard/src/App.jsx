@@ -33,7 +33,7 @@ function App() {
   };
 
   return (
-    <div className="flex" style={{ minHeight: '100vh', background: 'var(--bg-base)' }}>
+    <div className="flex" style={{ minHeight: '100vh', background: '#F8FAFC' }}>
       <Sidebar
         activeView={activeView}
         setActiveView={setActiveView}
@@ -48,7 +48,7 @@ function App() {
           style={{
             display: 'none',
             position: 'fixed', inset: 0,
-            background: 'rgba(0,0,0,0.6)',
+            background: 'rgba(15,23,42,0.4)',
             backdropFilter: 'blur(4px)',
             zIndex: 40,
           }}
@@ -59,13 +59,14 @@ function App() {
       <main
         style={{
           flex: 1,
-          padding: '2.5rem 3rem',
+          padding: '3rem 3.5rem',
           overflowY: 'auto',
           maxHeight: '100vh',
+          background: '#F8FAFC',
           transition: 'margin-left 0.3s cubic-bezier(0.16,1,0.3,1)',
         }}
       >
-        <div key={activeView} className="animate-slide-up" style={{ maxWidth: '1400px', margin: '0 auto' }}>
+        <div key={activeView} className="animate-slide-up" style={{ maxWidth: '1360px', margin: '0 auto' }}>
           {renderPage()}
         </div>
       </main>

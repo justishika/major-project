@@ -12,7 +12,6 @@ export const DISEASES = [
   { id: 'mammographic_mass', name: 'Mammographic Mass', icon: '🔬' },
   { id: 'thyroid_disease', name: 'Thyroid Disease', icon: '⚗️' },
   { id: 'indian_liver', name: 'Indian Liver Patient', icon: '🫁' },
-  { id: 'chronic_kidney', name: 'Chronic Kidney Disease', icon: '🧫' },
   { id: 'wilsons_disease', name: "Wilson's Disease", icon: '🧬' },
   { id: 'als', name: 'ALS', icon: '⚡' },
   { id: 'acute_nephritis', name: 'Acute Nephritis', icon: '💊' },

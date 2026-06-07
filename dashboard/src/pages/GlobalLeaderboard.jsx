@@ -1,296 +1,291 @@
 import React, { useEffect, useState } from 'react';
 import { getBenchmarkResults, computeGlobalLeaderboard, getModelCategory, getDiseaseDisplayName } from '../dataLoader';
 
-/* ── Rank medals ── */
-const RANK_DISPLAY = {
-  1: { medal: '🥇', color: '#fbbf24' },
-  2: { medal: '🥈', color: '#a78bfa' },
-  3: { medal: '🥉', color: '#06b6d4' },
+const fmt    = v => v != null ? (v * 100).toFixed(2) + '%' : '—';
+const fmtRaw = v => v != null ? v.toFixed(4) : '—';
+
+const TYPE_COLOR = { hybrid: '#F59E0B', quantum: '#7C3AED', classical: '#0EA5A4' };
+const TYPE_LABEL = { hybrid: 'Hybrid', quantum: 'Quantum', classical: 'Classical' };
+
+const RANK_META = {
+  1: { label: '#1',  ring: '#F59E0B', size: '5rem',   accent: '#D97706' },
+  2: { label: '#2',  ring: '#94A3B8', size: '4rem',   accent: '#64748B' },
+  3: { label: '#3',  ring: '#0EA5A4', size: '3.5rem', accent: '#0D7377' },
 };
 
-/* ── Category styling ── */
-const CATEGORY_STYLE = {
-  hybrid:    { dotClass: 'dot-hybrid',    badge: 'badge-hybrid',    label: 'Hybrid' },
-  quantum:   { dotClass: 'dot-quantum',   badge: 'badge-quantum',   label: 'Quantum' },
-  classical: { dotClass: 'dot-classical', badge: 'badge-classical', label: 'Classical' },
-};
-
-const fmt = (val) => val != null ? (val * 100).toFixed(2) + '%' : '—';
-const fmtRaw = (val) => val != null ? val.toFixed(4) : '—';
+/* Horizontal metric bar */
+const MetricBar = ({ label, value, max, color }) => (
+  <div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.375rem' }}>
+      <span style={{ fontSize: '0.72rem', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#0F172A', fontFamily: 'var(--font-mono)' }}>{fmt(value)}</span>
+    </div>
+    <div style={{ height: '3px', background: '#F1F5F9', borderRadius: '2px' }}>
+      <div style={{ width: `${(value / max) * 100}%`, height: '100%', background: color, borderRadius: '2px', transition: 'width 0.8s cubic-bezier(0.16,1,0.3,1)' }} />
+    </div>
+  </div>
+);
 
 const GlobalLeaderboard = () => {
-  const [leaderboard, setLeaderboard] = useState([]);
+  const [leaderboard, setLeaderboard]     = useState([]);
   const [benchmarkData, setBenchmarkData] = useState([]);
   const [expandedModel, setExpandedModel] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]             = useState(true);
 
   useEffect(() => {
     getBenchmarkResults().then(data => {
       setBenchmarkData(data);
-      const lb = computeGlobalLeaderboard(data);
-      setLeaderboard(lb);
+      setLeaderboard(computeGlobalLeaderboard(data));
       setLoading(false);
     });
   }, []);
 
-  // Compute per-disease breakdown for expanded model
-  const getPerDiseaseBreakdown = (modelName) => {
+  const getPerDiseaseBreakdown = modelName => {
     if (!benchmarkData.length) return [];
-
-    // Get max size per disease
     const diseaseMaxSize = {};
     benchmarkData.forEach(row => {
-      const ds = row['Dataset'];
-      const size = row['Dataset Size'];
-      if (ds && size != null) {
-        diseaseMaxSize[ds] = Math.max(diseaseMaxSize[ds] || 0, size);
-      }
+      const ds = row['Dataset'], sz = row['Dataset Size'];
+      if (ds && sz != null) diseaseMaxSize[ds] = Math.max(diseaseMaxSize[ds] || 0, sz);
     });
-
     return Object.entries(diseaseMaxSize).map(([disease, maxSize]) => {
       const row = benchmarkData.find(r => {
         if (r['Dataset'] !== disease || r['Model'] !== modelName || r['Dataset Size'] !== maxSize) return false;
-        const noise = r['Noise Level'];
-        if (modelName === 'QK-SVM (Noisy)' || modelName === 'Hybrid (Classical+Quantum)') {
-          return noise === 0.01;
-        }
-        return noise === 0.0 || noise === 0;
+        const n = r['Noise Level'];
+        if (modelName === 'QK-SVM (Noisy)' || modelName === 'Hybrid (Classical+Quantum)') return n === 0.01;
+        return n === 0.0 || n === 0;
       });
-
-      return {
-        disease,
-        displayName: getDiseaseDisplayName(disease),
-        accuracy: row ? row['Accuracy'] : null,
-        precision: row ? row['Precision'] : null,
-        recall: row ? row['Recall'] : null,
-        f1: row ? row['F1-score'] : null,
-        rocAuc: row ? row['ROC-AUC'] : null,
-        datasetSize: maxSize,
-      };
+      return { disease, displayName: getDiseaseDisplayName(disease), accuracy: row?.['Accuracy'] ?? null, f1: row?.['F1-score'] ?? null, rocAuc: row?.['ROC-AUC'] ?? null, datasetSize: maxSize };
     }).sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0));
   };
 
-  if (loading) {
-    return (
-      <div className="flex-col gap-8">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <h1 style={{ fontSize: '2rem' }}>🏆 Global Leaderboard</h1>
-        </div>
-        <div className="skeleton" style={{ height: '400px' }} />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ paddingTop: '4rem' }}>
+      <div style={{ height: '2px', background: 'linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%)', backgroundSize: '400% 100%', animation: 'shimmer 1.5s infinite', borderRadius: '2px', marginBottom: '3rem', width: '200px' }} />
+      <div style={{ height: '3px', background: 'linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%)', backgroundSize: '400% 100%', animation: 'shimmer 1.5s infinite', borderRadius: '2px', width: '320px', marginBottom: '1rem' }} />
+    </div>
+  );
 
-  if (leaderboard.length === 0) {
-    return (
-      <div className="flex-col gap-8">
-        <h1 style={{ fontSize: '2rem' }}>🏆 Global Leaderboard</h1>
-        <div className="no-data-state">
-          <div className="no-data-icon">📊</div>
-          <div className="no-data-title">No Benchmark Data Available</div>
-          <div className="no-data-desc">Run the benchmark pipeline first to generate results.</div>
-        </div>
-      </div>
-    );
-  }
+  if (!leaderboard.length) return (
+    <div style={{ paddingTop: '4rem', color: '#94A3B8', textAlign: 'center' }}>No benchmark data available.</div>
+  );
+
+  const maxAcc  = Math.max(...leaderboard.map(l => l.accuracy  || 0));
+  const maxPrec = Math.max(...leaderboard.map(l => l.precision || 0));
+  const maxRec  = Math.max(...leaderboard.map(l => l.recall    || 0));
+  const maxF1   = Math.max(...leaderboard.map(l => l.f1        || 0));
+  const maxAuc  = Math.max(...leaderboard.map(l => l.rocAuc    || 0));
+  const winner  = leaderboard[0];
 
   return (
-    <div className="flex-col gap-8" style={{ paddingBottom: '4rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '6rem' }}>
 
-      {/* ── Header ── */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-          <div style={{
-            width: '40px', height: '40px', borderRadius: '12px',
-            background: 'linear-gradient(135deg, var(--hybrid), #d97706)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.2rem',
-          }}>
-            🏆
-          </div>
-          <h1 style={{ fontSize: '2rem' }}>Global Leaderboard</h1>
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 1 — PAGE HEADER
+      ═══════════════════════════════════════════════════════ */}
+      <div style={{ padding: '4rem 0 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '1rem' }}>
+          <div style={{ width: '24px', height: '1px', background: '#2563EB' }} />
+          <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#2563EB' }}>
+            Global Rankings
+          </span>
         </div>
-        <p style={{ color: 'var(--text-secondary)', maxWidth: '600px' }}>
-          Models ranked by mean accuracy across all diseases at maximum dataset size.
-          All rankings are computed dynamically from benchmark results.
+        <h1 style={{ fontSize: '3.5rem', fontWeight: 800, letterSpacing: '-0.04em', color: '#0F172A', lineHeight: 1.05, marginBottom: '1rem' }}>
+          Benchmark<br />Leaderboard
+        </h1>
+        <p style={{ fontSize: '1rem', color: '#64748B', maxWidth: '480px', lineHeight: 1.75, paddingBottom: '3.5rem', borderBottom: '1px solid #E2E8F0' }}>
+          Models ranked by mean accuracy across all disease datasets at maximum training size. Rankings computed dynamically from benchmark results.
         </p>
-        <div className="source-tag" style={{ marginTop: '0.5rem' }}>
-          📁 Source: benchmark_results.csv · Filtered: max dataset size per disease · Noise: 0.0 (classical/noiseless), 0.01 (noisy/hybrid)
-        </div>
       </div>
 
-      {/* ── Top 3 Podium ── */}
-      <div className="grid grid-cols-3 gap-4 stagger">
-        {leaderboard.slice(0, 3).map((item) => {
-          const rank = RANK_DISPLAY[item.rank];
-          const catStyle = CATEGORY_STYLE[item.category];
-          return (
-            <div key={item.model} className="insight-card" style={{
-              textAlign: 'center',
-              borderColor: `${rank.color}30`,
-            }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{rank.medal}</div>
-              <div style={{
-                fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em',
-                textTransform: 'uppercase', color: rank.color, marginBottom: '0.5rem',
-              }}>
-                #{item.rank} Overall
-              </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
-                {item.model}
-              </div>
-              <span className={`badge ${catStyle.badge}`} style={{ marginBottom: '0.75rem' }}>
-                {catStyle.label}
-              </span>
-              <div style={{
-                fontSize: '2rem', fontWeight: 700, color: rank.color,
-                fontFamily: 'var(--font-heading)', marginTop: '0.5rem',
-              }}>
-                {fmt(item.accuracy)}
-              </div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Mean Accuracy · {item.diseaseCount} diseases
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 2 — PODIUM (asymmetric layout)
+      ═══════════════════════════════════════════════════════ */}
+      <div style={{ padding: '5rem 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6rem', alignItems: 'start' }}>
 
-      {/* ── Full Leaderboard Table ── */}
-      <div className="panel" style={{ overflow: 'hidden' }}>
-        <div style={{
-          padding: '1rem 1.5rem',
-          borderBottom: '1px solid var(--border-subtle)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        {/* Left — Winner deep dive */}
+        {/* Left — Winner deep dive */}
+        <div style={{ 
+          background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          borderRadius: '24px',
+          padding: '3rem',
+          boxShadow: '0 20px 40px -10px rgba(245, 158, 11, 0.15)',
+          position: 'relative'
         }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-            Complete Rankings · All Metrics
-          </span>
-          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-            {leaderboard.length} models · {leaderboard[0]?.diseaseCount || 0} diseases
-          </span>
+          <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '150px', height: '150px', background: 'radial-gradient(circle, rgba(245,158,11,0.15) 0%, rgba(255,255,255,0) 70%)', borderRadius: '50%' }} />
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem', marginBottom: '1.5rem', position: 'relative' }}>
+            <div style={{ width: '24px', height: '2px', background: '#F59E0B' }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#B45309' }}>
+              Champion
+            </span>
+          </div>
+          <div style={{ fontSize: '5rem', fontWeight: 900, letterSpacing: '-0.04em', color: '#D97706', lineHeight: 0.9, marginBottom: '1rem', position: 'relative' }}>
+            {fmt(winner.accuracy)}
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#0F172A', marginBottom: '0.5rem', position: 'relative' }}>
+            {winner.model.replace(' (Classical+Quantum)', '')}
+          </div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 1rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 700, background: 'rgba(245,158,11,0.15)', color: '#B45309', border: '1px solid rgba(245,158,11,0.2)', marginBottom: '2.5rem', position: 'relative' }}>
+            {TYPE_LABEL[winner.category]} · {winner.diseaseCount} Diseases
+          </div>
+
+          {/* Winner metrics */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+            <MetricBar label="Accuracy"  value={winner.accuracy}  max={maxAcc}  color="#F59E0B" />
+            <MetricBar label="Precision" value={winner.precision} max={maxPrec} color="#F59E0B" />
+            <MetricBar label="Recall"    value={winner.recall}    max={maxRec}  color="#F59E0B" />
+            <MetricBar label="F1-Score"  value={winner.f1}        max={maxF1}   color="#F59E0B" />
+            <MetricBar label="ROC-AUC"   value={winner.rocAuc}    max={maxAuc}  color="#F59E0B" />
+          </div>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table className="leaderboard-table">
-            <thead>
-              <tr>
-                <th style={{ width: '60px', textAlign: 'center' }}>Rank</th>
-                <th>Model</th>
-                <th>Type</th>
-                <th>Mean Accuracy</th>
-                <th>Mean Precision</th>
-                <th>Mean Recall</th>
-                <th>Mean F1-Score</th>
-                <th>Mean ROC-AUC</th>
-                <th>Diseases</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboard.map((item) => {
-                const rank = RANK_DISPLAY[item.rank];
-                const catStyle = CATEGORY_STYLE[item.category];
-                const isExpanded = expandedModel === item.model;
-                const breakdown = isExpanded ? getPerDiseaseBreakdown(item.model) : [];
+        {/* Right — Other podium + why winner leads */}
+        <div>
+          {/* 2nd and 3rd */}
+          {leaderboard.slice(1, 3).map((item, i) => {
+            const meta = RANK_META[item.rank];
+            const cat  = TYPE_COLOR[item.category];
+            return (
+              <div key={item.model} style={{ 
+                padding: '1.5rem', 
+                background: '#ffffff',
+                border: '1px solid #E2E8F0',
+                borderRadius: '16px',
+                marginBottom: '1rem',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1.25rem' }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', fontWeight: 800, color: '#CBD5E1', paddingTop: '0.25rem', width: '24px', flexShrink: 0 }}>
+                    {String(item.rank).padStart(2, '0')}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A' }}>{item.model.replace(' (Classical+Quantum)', '')}</span>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: meta.accent, fontFamily: 'var(--font-mono)', letterSpacing: '-0.02em' }}>{fmt(item.accuracy)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: cat }} />
+                      <span style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 600 }}>{TYPE_LABEL[item.category]} · {item.diseaseCount} diseases</span>
+                    </div>
+                    <div style={{ marginTop: '1rem', height: '4px', background: '#F1F5F9', borderRadius: '2px' }}>
+                      <div style={{ width: `${(item.accuracy / winner.accuracy) * 100}%`, height: '100%', background: cat, borderRadius: '2px' }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
 
-                // Find the best metric value in each column for highlighting
-                const maxAcc = Math.max(...leaderboard.map(l => l.accuracy || 0));
-                const maxPrec = Math.max(...leaderboard.map(l => l.precision || 0));
-                const maxRec = Math.max(...leaderboard.map(l => l.recall || 0));
-                const maxF1 = Math.max(...leaderboard.map(l => l.f1 || 0));
-                const maxAuc = Math.max(...leaderboard.map(l => l.rocAuc || 0));
+          {/* Why hybrid wins */}
+          <div style={{ marginTop: '2.5rem', padding: '1.75rem', background: '#F8FAFC', borderRadius: '12px', borderLeft: '3px solid #F59E0B' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#B45309', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.75rem' }}>
+              Why the Hybrid Model Leads
+            </div>
+            <p style={{ fontSize: '0.875rem', color: '#475569', lineHeight: 1.7, margin: 0 }}>
+              The stacking ensemble leverages quantum kernel expressibility in the feature space alongside classical model robustness. QK-SVM contributes non-linear quantum separability while RF and GradientBoosting handle noise and overfitting — the combination is greater than the sum of its parts.
+            </p>
+          </div>
+        </div>
+      </div>
 
-                return (
-                  <React.Fragment key={item.model}>
-                    <tr className={`rank-${item.rank}`}>
-                      <td className="rank-cell">
-                        {rank ? rank.medal : item.rank}
-                      </td>
-                      <td className="model-cell">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <div className={`dot ${catStyle.dotClass}`} />
-                          {item.model}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`badge ${catStyle.badge}`} style={{ fontSize: '0.7rem' }}>
-                          {catStyle.label}
-                        </span>
-                      </td>
-                      <td className={`metric-cell ${item.accuracy === maxAcc ? 'highlight' : ''}`}>
-                        {fmt(item.accuracy)}
-                      </td>
-                      <td className={`metric-cell ${item.precision === maxPrec ? 'highlight' : ''}`}>
-                        {fmt(item.precision)}
-                      </td>
-                      <td className={`metric-cell ${item.recall === maxRec ? 'highlight' : ''}`}>
-                        {fmt(item.recall)}
-                      </td>
-                      <td className={`metric-cell ${item.f1 === maxF1 ? 'highlight' : ''}`}>
-                        {fmt(item.f1)}
-                      </td>
-                      <td className={`metric-cell ${item.rocAuc === maxAuc ? 'highlight' : ''}`}>
-                        {fmtRaw(item.rocAuc)}
-                      </td>
-                      <td className="metric-cell">{item.diseaseCount}</td>
-                      <td>
-                        <button
-                          className="btn btn-ghost"
-                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem' }}
-                          onClick={() => setExpandedModel(isExpanded ? null : item.model)}
-                        >
-                          {isExpanded ? '▲ Collapse' : '▼ Details'}
-                        </button>
-                      </td>
-                    </tr>
-                    {/* Expanded per-disease breakdown */}
-                    {isExpanded && breakdown.map((d) => (
-                      <tr key={`${item.model}-${d.disease}`} style={{ background: 'rgba(139,92,246,0.03)' }}>
-                        <td></td>
-                        <td style={{ paddingLeft: '2.5rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                          ↳ {d.displayName}
-                        </td>
-                        <td>
-                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                            N={d.datasetSize}
+      {/* ─── Divider ─── */}
+      <div style={{ height: '1px', background: '#E2E8F0' }} />
+
+      {/* ═══════════════════════════════════════════════════════
+          SECTION 3 — COMPLETE RANKINGS TABLE
+      ═══════════════════════════════════════════════════════ */}
+      <div style={{ padding: '4rem 0' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em' }}>
+            Complete Rankings
+          </h2>
+          <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>{leaderboard.length} models · {leaderboard[0]?.diseaseCount || 0} diseases</span>
+        </div>
+
+        {/* Table */}
+        <div style={{ border: '1px solid #E2E8F0', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.03)', background: '#ffffff' }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+              <thead>
+                <tr>
+                  {['', 'Model', 'Type', 'Accuracy', 'Precision', 'Recall', 'F1', 'ROC-AUC', ''].map((h, i) => (
+                    <th key={i} style={{ padding: '0.875rem 1.25rem', textAlign: i <= 1 ? 'left' : 'left', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#94A3B8', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {leaderboard.map((item, idx) => {
+                  const cat = TYPE_COLOR[item.category];
+                  const isExpanded = expandedModel === item.model;
+                  const breakdown  = isExpanded ? getPerDiseaseBreakdown(item.model) : [];
+                  return (
+                    <React.Fragment key={item.model}>
+                      <tr style={{ borderBottom: '1px solid #F8FAFC', transition: 'background 0.15s', background: idx % 2 === 0 ? '#FFFFFF' : '#FDFDFE' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                        onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? '#FFFFFF' : '#FDFDFE'}
+                      >
+                        <td style={{ padding: '1rem 1.25rem', width: '44px' }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.72rem', fontWeight: 700, color: item.rank <= 3 ? ['#D97706','#64748B','#0D7377'][item.rank-1] : '#CBD5E1' }}>
+                            {String(item.rank).padStart(2, '0')}
                           </span>
                         </td>
-                        <td className="metric-cell">{d.accuracy != null ? fmt(d.accuracy) : '—'}</td>
-                        <td className="metric-cell">{d.precision != null ? fmt(d.precision) : '—'}</td>
-                        <td className="metric-cell">{d.recall != null ? fmt(d.recall) : '—'}</td>
-                        <td className="metric-cell">{d.f1 != null ? fmt(d.f1) : '—'}</td>
-                        <td className="metric-cell">{d.rocAuc != null ? fmtRaw(d.rocAuc) : '—'}</td>
-                        <td></td>
-                        <td></td>
+                        <td style={{ padding: '1rem 1.25rem', fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
+                            <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: cat, flexShrink: 0 }} />
+                            {item.model}
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem 1.25rem' }}>
+                          <span style={{ padding: '0.2rem 0.625rem', borderRadius: '999px', fontSize: '0.68rem', fontWeight: 600, background: `${cat}12`, color: cat, border: `1px solid ${cat}30` }}>
+                            {TYPE_LABEL[item.category]}
+                          </span>
+                        </td>
+                        {[
+                          { v: fmt(item.accuracy),  best: item.accuracy === maxAcc  },
+                          { v: fmt(item.precision), best: item.precision === maxPrec },
+                          { v: fmt(item.recall),    best: item.recall === maxRec    },
+                          { v: fmt(item.f1),        best: item.f1 === maxF1         },
+                          { v: fmtRaw(item.rocAuc), best: item.rocAuc === maxAuc    },
+                        ].map((cell, ci) => (
+                          <td key={ci} style={{ padding: '1rem 1.25rem', fontFamily: 'var(--font-mono)', fontSize: '0.825rem', fontWeight: cell.best ? 700 : 400, color: cell.best ? '#15803D' : '#475569' }}>
+                            {cell.v}
+                            {cell.best && <span style={{ marginLeft: '0.375rem', fontSize: '0.6rem', color: '#22C55E' }}>▲</span>}
+                          </td>
+                        ))}
+                        <td style={{ padding: '1rem 1.25rem' }}>
+                          <button onClick={() => setExpandedModel(isExpanded ? null : item.model)}
+                            style={{ padding: '0.3rem 0.75rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer', border: '1px solid #E2E8F0', background: 'transparent', color: '#64748B', transition: 'all 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#2563EB'; e.currentTarget.style.color = '#2563EB'; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#E2E8F0'; e.currentTarget.style.color = '#64748B'; }}
+                          >
+                            {isExpanded ? 'Collapse' : 'Expand'}
+                          </button>
+                        </td>
                       </tr>
-                    ))}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Data Attribution ── */}
-      <div style={{
-        padding: '1rem 1.5rem',
-        background: 'var(--bg-elevated)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: 'var(--radius-md)',
-        fontSize: '0.78rem',
-        color: 'var(--text-muted)',
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: '0.5rem',
-      }}>
-        <span>ℹ</span>
-        <div>
-          <strong style={{ color: 'var(--text-secondary)' }}>Academic Defensibility Note:</strong>{' '}
-          All rankings are computed from <code>benchmark_results.csv</code> at each disease's maximum dataset size.
-          Mean values are arithmetic averages across diseases. No hardcoded ordering or estimated values are used.
-          ROC-AUC values are raw (0–1 scale); all other metrics shown as percentages.
+                      {isExpanded && breakdown.map(d => (
+                        <tr key={`${item.model}-${d.disease}`} style={{ background: '#F8FAFC', borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '0.625rem 1.25rem' }} />
+                          <td style={{ padding: '0.625rem 1.25rem', fontSize: '0.8rem', color: '#64748B', paddingLeft: '2.75rem' }}>
+                            ↳ {d.displayName}
+                          </td>
+                          <td style={{ padding: '0.625rem 1.25rem', fontSize: '0.72rem', color: '#94A3B8', fontFamily: 'var(--font-mono)' }}>N={d.datasetSize}</td>
+                          <td style={{ padding: '0.625rem 1.25rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: '#64748B' }}>{d.accuracy != null ? fmt(d.accuracy) : '—'}</td>
+                          <td colSpan={4} style={{ padding: '0.625rem 1.25rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: '#94A3B8' }}>
+                            F1: {d.f1 != null ? fmt(d.f1) : '—'} &nbsp;·&nbsp; AUC: {d.rocAuc != null ? fmtRaw(d.rocAuc) : '—'}
+                          </td>
+                          <td />
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ padding: '0.875rem 1.25rem', background: '#F8FAFC', borderTop: '1px solid #E2E8F0', fontSize: '0.72rem', color: '#94A3B8' }}>
+            All values at maximum dataset size per disease. No hardcoded data. Source: benchmark_results.csv
+          </div>
         </div>
       </div>
     </div>
