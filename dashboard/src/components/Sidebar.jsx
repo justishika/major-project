@@ -6,7 +6,6 @@ const NAV_ITEMS = [
   { id: 'summary',       label: 'Overview',              icon: LayoutDashboard },
   { id: 'leaderboard',   label: 'Leaderboard',           icon: BarChart2 },
   { id: 'cross-disease', label: 'Research Insights',     icon: BookOpen },
-  { id: 'runner',        label: 'Pipeline Runner',       icon: Activity },
 ];
 
 const Sidebar = ({ activeView, setActiveView, sidebarOpen, setSidebarOpen }) => {
