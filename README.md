@@ -1,79 +1,203 @@
-# Quantum Machine Learning Benchmark for Parkinson's Disease Detection
+# Hybrid Classical-Quantum Benchmark for Multi-Disease Classification
 
 ## Overview
 
-This project is a research-oriented benchmarking pipeline designed to compare the performance of **Classical Machine Learning Models** against a **Variational Quantum Classifier (VQC)** for the detection of Parkinson's disease.
+**Noise-Aware Quantum Kernel SVM with Hybrid Stacking Ensemble across 12 Clinical Disease Datasets**
 
-The pipeline automatically fetches the Parkinson's Disease dataset from the UCI Machine Learning Repository, preprocesses the data (including dimensionality reduction via PCA to map features to a 4-qubit quantum simulation), and evaluates the models across different dataset sizes to identify performance trends in small-data regimes. The quantum simulation also incorporates realistic quantum noise models.
+This project is a systematic research study that benchmarks a **Hybrid Classical-Quantum machine learning pipeline** against classical baselines across 12 clinically diverse disease datasets. The pipeline evaluates whether quantum kernel methods and hybrid stacking ensembles can outperform classical approaches — particularly in small-data healthcare scenarios under realistic noise conditions.
 
-## Key Features
-*   **Dynamic Data Fetching:** Directly pulls the latest dataset from UCI.
-*   **Dimensionality Reduction:** Uses PCA to condense over 20 voice-measurement features down to 4 principle components, perfectly matching our 4-qubit quantum circuit limitations.
-*   **Stratified Sampling:** Evaluates model performance across incremental dataset sizes (e.g., 50, 100, 150 samples) to observe how Quantum vs. Classical models fare with limited data.
-*   **Classical Models baseline:** Evaluates Standard Support Vector Machine (SVM), Logistic Regression, and Random Forest.
-*   **Quantum Simulation:** Implements a Variational Quantum Classifier (VQC) with simulated IBM Qiskit Aer noise models to closely map real-world quantum hardware behavior.
-*   **Automated Visualization:** Automatically generates comprehensive performance plots and CSV benchmarks.
+### Research Motivation
+- **Problem:** Healthcare datasets are often small due to privacy restrictions and rare disease prevalence. Classical ML typically requires sufficient labeled data.
+- **Hypothesis:** Quantum kernel feature maps (ZZFeatureMap) embed classical data into exponentially large Hilbert spaces, potentially allowing richer geometric representations even with limited samples.
+- **Challenge:** Real NISQ hardware has 1–5% depolarizing error rates. This study characterizes how quantum models degrade under noise compared to classical approaches.
+- **Goal:** Experimentally demonstrate that a learned stacking Hybrid (RF + ExtraTrees + GradientBoosting + QK-SVM) consistently outperforms any single classical or quantum model, validated across 12 diverse disease datasets.
+
+---
+
+## Models Benchmarked
+
+| Model | Type | Description |
+|-------|------|-------------|
+| **Logistic Regression** | Classical | Linear probabilistic classifier |
+| **SVM** | Classical | Support Vector Machine with RBF kernel |
+| **Random Forest** | Classical | 400-tree bagging ensemble |
+| **QK-SVM (Noiseless)** | Quantum | Quantum Kernel SVM using ZZFeatureMap (reps=1, C=1, linear entanglement) |
+| **QK-SVM (Noisy)** | Quantum | Same as above with depolarizing noise injection (p=0.01) |
+| **Hybrid (Classical+Quantum)** | Hybrid | 4-base-learner stacking: RF + ExtraTrees + GradientBoosting + QK-SVM (C=10, full entanglement), with a GradientBoosting meta-learner on 22 enriched meta-features |
+
+---
+
+## Diseases Integrated (12 Total)
+
+| # | Key | Display Name | Source | Task |
+|---|-----|-------------|--------|------|
+| 1 | `parkinsons` | Parkinson's Disease | UCI (remote CSV) | Parkinson's vs healthy |
+| 2 | `breast_cancer` | Breast Cancer | sklearn built-in | Malignant vs benign |
+| 3 | `hepatitis_c` | Hepatitis C (HCV Serology) | OpenML `hepatitis` | DIE vs LIVE prognosis |
+| 4 | `heart_disease` | Heart Disease (Cleveland) | OpenML `heart-statlog` | Present vs absent |
+| 5 | `mammographic_mass` | Mammographic Mass Assessment | OpenML `mammographic-mass` | Benign vs malignant |
+| 6 | `thyroid_disease` | Thyroid Disease (Sick Euthyroid) | OpenML `sick` | Sick vs normal |
+| 7 | `indian_liver` | Indian Liver Patient (ILPD) | OpenML `ilpd` | Patient vs non-patient |
+| 8 | `chronic_kidney` | Chronic Kidney Disease | OpenML `chronic-kidney-disease` | CKD vs not-CKD |
+| 9 | `wilsons_disease` | Wilson's Disease (Synthetic) | Synthetic (clinical priors) | Patient vs control |
+| 10 | `als` | ALS (Synthetic) | Synthetic (El Escorial criteria) | ALS vs mimic |
+| 11 | `acute_nephritis` | Acute Nephritis | UCI Acute Inflammations | Positive vs negative |
+| 12 | `heart_failure` | Heart Failure Clinical Records | UCI Heart Failure | Death event prediction |
+
+---
 
 ## Prerequisites
-*   Python 3.8 to 3.11 (Recommended)
-*   Windows (PowerShell) / Linux / macOS
+
+- Python 3.8 to 3.11 (Recommended: 3.10)
+- Windows (PowerShell) / Linux / macOS
+
+---
 
 ## Installation & Setup
 
-1. **Clone or Download the Project.** Make sure you are in the project's root folder:
-   ```powershell
-   cd new-folder-name
-   ```
+### 1. Navigate to the project folder
+```powershell
+cd "path\to\major project"
+```
 
-2. **Activate the Virtual Environment**
-   This project uses a virtual environment `venv` to manage its specific package versions. 
-   
-   If you are on Windows using PowerShell, you need to execute this first to prevent security errors:
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-   ```
-   *If prompted, type `Y` and press Enter.*
+### 2. Activate the Virtual Environment
 
-   Then, activate the environment:
-   ```powershell
-   .\venv\Scripts\Activate.ps1
-   ```
-   *(You should see `(venv)` appear at the start of your terminal line once successfully activated).*
+On Windows (PowerShell) — run this once to allow script execution:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+*If prompted, type `Y` and press Enter.*
 
-3. **Install Dependencies**
-   If you have not installed the required Python packages yet, install them via:
-   ```powershell
-   pip install -r requirements.txt
-   ```
+Then activate:
+```powershell
+.\venv\Scripts\Activate.ps1
+```
+*(You should see `(venv)` at the start of your terminal line.)*
+
+On Linux / macOS:
+```bash
+source venv/bin/activate
+```
+
+### 3. Install Dependencies
+```powershell
+pip install -r requirements.txt
+```
+
+---
 
 ## How to Run
 
-With your virtual environment activated, you can execute the entire pipeline with a single command:
-
+### Run all 12 diseases (full pipeline)
 ```powershell
 python main.py
 ```
+This runs every disease sequentially, saves all per-disease graphs, summary CSVs, and generates the cross-disease comparison chart.
 
-The script will:
-1. Download and preprocess the dataset.
-2. Begin splitting the data and training the classical models.
-3. Build and train the noisy Quantum VQC circuit.
-4. Calculate standard ML metrics (Accuracy, Precision, Recall, F1, ROC-AUC).
-5. Output the results locally.
+---
 
-**Warning:** The Quantum simulation is extremely computationally heavy. The script may take several minutes to finish depending on your computer's CPU speed. 
+### Run a single disease independently
+Use the `--disease` (or `-d`) flag with any disease key:
+
+```powershell
+# Examples
+python main.py --disease parkinsons
+python main.py --disease breast_cancer
+python main.py --disease hepatitis_c
+python main.py --disease heart_disease
+python main.py --disease mammographic_mass
+python main.py --disease thyroid_disease
+python main.py --disease indian_liver
+python main.py --disease chronic_kidney
+python main.py --disease wilsons_disease
+python main.py --disease als
+python main.py --disease acute_nephritis
+python main.py --disease heart_failure
+
+# Short form
+python main.py -d parkinsons
+python main.py -d als
+```
+
+Single-disease mode:
+- Saves all graphs to `results/graphs/<disease_name>/`
+- Saves per-disease summary to `results/data/summary_<disease_name>.csv`
+- Updates `results/data/benchmark_results.csv` non-destructively (replaces only that disease's rows)
+
+---
+
+### View available options
+```powershell
+python main.py --help
+```
+
+---
+
+> ⚠️ **Runtime Warning:** The QK-SVM quantum kernel simulation is computationally intensive — it evaluates an `n×n` kernel matrix using 1024 circuit shots per entry. For the full 12-disease run, expect **45–75 minutes** depending on CPU speed. Running a single small disease (e.g., `hepatitis_c`, `parkinsons`) takes **5–15 minutes**.
+
+---
 
 ## Project Structure
 
-*   `main.py` - The entry point. Handles the main loop across different dataset sample sizes.
-*   `data_preprocessing.py` - Fetches the UCI dataset, normalizes it, handles the PCA downscaling, and prepares train/test splits.
-*   `classical_models.py` - Contains the definitions and training functions for SVM, Logistic Regression, and Random Forest.
-*   `quantum_models.py` - Defines the Qiskit Quantum Circuit, the VQC architecture, and the simulated noise models based on real IBM hardware parameters.
-*   `visualization.py` - Generates performance plots from the resulting data.
-*   `requirements.txt` - Lists all necessary Python dependencies (`qiskit`, `pandas`, `scikit-learn`, `matplotlib`, etc.)
+```
+major project/
+├── main.py                  # Entry point — runs the full benchmark or a single disease
+├── data_preprocessing.py    # Dataset loaders (12 diseases), PCA, scaling, train/test split
+├── classical_models.py      # Logistic Regression, SVM, Random Forest training & evaluation
+├── quantum_models.py        # QK-SVM (noiseless/noisy) and HybridClassicalQuantumClassifier
+├── visualization.py         # All graph generation functions (10+ chart types)
+├── regenerate_graphs.py     # Re-plot graphs from an existing benchmark_results.csv
+├── regenerate_curves.py     # Re-plot ROC/PR curves from saved data
+├── requirements.txt         # Python dependencies
+└── results/
+    ├── data/
+    │   ├── benchmark_results.csv           # Raw results — all models, diseases, sizes, noise levels
+    │   ├── benchmark_results_summary.csv   # Aggregated mean ± std accuracy
+    │   └── summary_<disease>.csv           # Per-disease accuracy summary
+    └── graphs/
+        ├── cross_disease_summary.png       # Cross-disease comparison bar chart
+        └── <disease_name>/                 # Per-disease graph subfolder (one per disease)
+            ├── accuracy_vs_size_*.png
+            ├── model_stability_*.png
+            ├── noise_sensitivity_*.png
+            ├── precision_recall_curve_*.png
+            ├── roc_curve_*.png
+            ├── overfitting_behavior_*.png
+            ├── confusion_matrix_*_<Model>.png
+            ├── metric_heatmap_*.png
+            └── <metric>_vs_size_*.png      # F1, Precision, Recall, ROC-AUC, etc.
+```
+
+---
 
 ## Outputs & Results
-Once the script has finished executing, it will generate three files in your project directory:
-*   `benchmark_results.csv` - A raw spreadsheet of all models, their training size, and their accuracy/error metrics.
-*   `accuracy_vs_size.png` - A plotted graph comparing the Accuracy of Quantum vs. Classical models as data size increases.
-*   `f1_score_vs_size.png` - A plotted graph comparing the F1 Score of Quantum vs. Classical models as data size increases.
+
+After running, the following are generated per disease:
+
+**Data Files** (in `results/data/`):
+- `benchmark_results.csv` — Raw results for all models, dataset sizes, noise levels
+- `benchmark_results_summary.csv` — Mean ± std accuracy across all diseases
+- `summary_<disease>.csv` — Per-disease accuracy summary
+
+**Visualizations** (in `results/graphs/<disease>/`):
+1. `accuracy_vs_size_*.png` — Accuracy trend as dataset size grows
+2. `model_stability_*.png` — Bar chart with error bars (std deviation) showing consistency
+3. `noise_sensitivity_*.png` — QK-SVM accuracy degradation across noise levels vs SVM baseline
+4. `precision_recall_curve_*.png` — Precision-Recall tradeoff (critical for medical diagnosis)
+5. `roc_curve_*.png` — ROC-AUC comparison across all models
+6. `overfitting_behavior_*.png` — Train vs. Test accuracy (generalization gap)
+7. `confusion_matrix_*_<Model>.png` — Confusion matrix per model
+8. `metric_heatmap_*.png` — Heatmap of all metrics at maximum dataset size
+9. Individual metric plots — F1, Precision, Recall, ROC-AUC, Sensitivity, Specificity vs. size
+
+**Cross-Disease** (in `results/graphs/`):
+- `cross_disease_summary.png` — Grouped bar chart comparing all models across all 12 diseases
+
+---
+
+## Key Research Findings
+
+- The **Hybrid stacking ensemble** (RF + ExtraTrees + GB + QK-SVM meta-learned) consistently outperforms every individual classical or quantum model.
+- **QK-SVM (Noiseless)** shows competitive accuracy at small dataset sizes but degrades under noise (p ≥ 0.02).
+- **Error decorrelation** between tree-based (bagging), sequential (boosting), and kernel-based (quantum) base learners is the primary mechanism enabling hybrid superiority.
+- **Quantum kernel degeneracy** (near-identical kernel matrix entries) is the main bottleneck at small sample sizes and high noise.

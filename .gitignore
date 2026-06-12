@@ -52,6 +52,7 @@ cover/
 # Environments
 .env
 .venv
+.venv311/
 env/
 venv/
 ENV/
@@ -67,7 +68,5 @@ venv.bak/
 *.swp
 *.swo
 
-# Project Output Files
-benchmark_results.csv
-accuracy_vs_size.png
-f1_score_vs_size.png
+
+
